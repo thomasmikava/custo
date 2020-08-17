@@ -1,6 +1,6 @@
 {
-  "name": "react-fetch-data-hooks",
-  "version": "0.0.12",
+  "name": "custo",
+  "version": "0.0.1",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thomasmikava/react-fetch-data-hooks.git"
+    "url": "git+https://github.com/thomasmikava/custo.git"
   },
   "keywords": [],
   "author": "Temuri Mikava",
