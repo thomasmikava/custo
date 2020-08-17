@@ -1,4 +1,4 @@
-import { CustoClass, CustType } from "../interfaces";
+import { CustoClass, CustoType } from "../interfaces";
 import { MultiDimentionalWeakMap } from "./weak-map";
 import { useMemo } from "react";
 import {
@@ -135,7 +135,7 @@ const mergeCustoClasses = (
 const isComponentHook = (
 	val: unknown
 ): val is CustoHook<(...args: unknown[]) => CustoClass> => {
-	return val instanceof CustoHook && val.type === CustType.component;
+	return val instanceof CustoHook && val.type === CustoType.component;
 };
 
 export function mergeCustomizations<

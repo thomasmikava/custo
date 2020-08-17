@@ -9,7 +9,7 @@ export interface CustoClass {
 	) => CustoClass;
 }
 
-export enum CustType {
+export enum CustoType {
 	component = "c",
 	data = "d",
 	hook = "h",

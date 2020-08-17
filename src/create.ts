@@ -20,5 +20,5 @@ export const CreateCusto = {
 		Text: CustoHook.createTextFn,
 		Data: CustoHook.createDataFn,
 	},
-	Tree: buildCustoTree,
+	Tree: (buildCustoTree) as typeof buildCustoTree,
 };

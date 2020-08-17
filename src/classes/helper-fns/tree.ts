@@ -4,7 +4,7 @@ import { CustoComponent } from "../components";
 import { CustoText, CustoTextProps } from "../texts";
 import { CustoHook } from "../hook";
 import { ContextSelectorMiniHook } from "react-flexible-contexts";
-import { CustType } from "../../interfaces";
+import { CustoType } from "../../interfaces";
 import { CustoData } from "../data";
 import { untypedGetProp } from "../../utils/prop";
 import { buildCustoComponent } from "./components";
@@ -13,9 +13,9 @@ import { buildCustoData } from "./data";
 import { buildCustoHook } from "./hook";
 
 export type ToCustoTreeObj<T> = T extends (...args: any[]) => void
-	? CustType
+	? CustoType
 	: T extends { $$end$$: true }
-	? CustType
+	? CustoType
 	: T extends Record<any, any>
 	? {
 			[key in keyof T]-?: ToCustoTreeObj<T[key]>;
@@ -50,16 +50,16 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 					[]
 				);
 			if (
-				val === CustType.component ||
+				val === CustoType.component ||
 				val instanceof CustoComponent ||
-				(val instanceof CustoHook && val.type === CustType.component)
+				(val instanceof CustoHook && val.type === CustoType.component)
 			) {
 				// Component
 				final[key] = buildCustoComponent(getVal);
 			} else if (
-				val === CustType.text ||
+				val === CustoType.text ||
 				val instanceof CustoText ||
-				(val instanceof CustoHook && val.type === CustType.text)
+				(val instanceof CustoHook && val.type === CustoType.text)
 			) {
 				// Text
 				final[key] = buildCustoText(
@@ -67,15 +67,15 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 					options.getTextTransformationHook
 				);
 			} else if (
-				val === CustType.data ||
+				val === CustoType.data ||
 				val instanceof CustoData ||
-				(val instanceof CustoHook && val.type === CustType.data)
+				(val instanceof CustoHook && val.type === CustoType.data)
 			) {
 				// Data
 				final[key] = buildCustoData(getVal);
 			} else if (
-				val === CustType.hook ||
-				(val instanceof CustoHook && val.type === CustType.hook)
+				val === CustoType.hook ||
+				(val instanceof CustoHook && val.type === CustoType.hook)
 			) {
 				// Hook
 				final[key] = buildCustoHook(getVal);
@@ -92,7 +92,7 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 	return result as any;
 };
 
-type CustoTree<T> = T extends { $$end$$: true }
+export type CustoTree<T> = T extends { $$end$$: true }
 	? T extends CustoComponent<infer Props>
 		? React.FC<Props>
 		: T extends CustoHook<(prop: any) => CustoComponent<infer Props>>

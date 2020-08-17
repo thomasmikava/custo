@@ -26,3 +26,5 @@ export type GeneralCustoComp<T extends Record<any, any>> = Hey<
 export type GeneralCustData<Data, HiddenArgs extends readonly any[] = []> =
 	| CustoData<Data, HiddenArgs>
 	| CustoHook<(...args: HiddenArgs) => Data>;
+
+export type GeneralCustoHook<Fn extends (...args: any[]) => any> = CustoHook<Fn>;
