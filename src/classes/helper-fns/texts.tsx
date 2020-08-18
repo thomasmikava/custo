@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { useDepsVersion, useVersion } from "../../utils/hooks";
 import { CustoHook } from "../hook";
 import { CustoText, CustoTextProps } from "../texts";
+import { CustoTypeError } from "../../utils/errors";
 
 type richtext = string | number | null | JSX.Element;
 
@@ -9,7 +10,10 @@ export function buildCustoText<Props extends CustoTextProps>(
 	hook: () =>
 		| CustoText<Props>
 		| CustoHook<(props: Props) => CustoText<Props>>,
-	getTextTransformationHook?: () => CustoHook<(oldText: richtext) => richtext>
+	getTextTransformationHook:
+		| (() => CustoHook<(oldText: richtext) => richtext>)
+		| undefined,
+	path: string
 ): React.ComponentType<Props> {
 	return React.forwardRef(function CustComponentWrapper(
 		props: any,
@@ -44,6 +48,14 @@ export function buildCustoText<Props extends CustoTextProps>(
 				const val = valRef.current;
 				const custComponent =
 					val instanceof CustoHook ? val.use(props) : val;
+
+				if (!(custComponent instanceof CustoText)) {
+					throw new CustoTypeError(
+						`expected CustoComponent, got ${custComponent} ${
+							path ? " at " + path : ""
+						}`
+					);
+				}
 
 				return custComponent.render(
 					{ ...props, ref },

@@ -2,17 +2,21 @@ import React, { useRef } from "react";
 import { CustoComponent } from "../components";
 import { useVersion } from "../../utils/hooks";
 import { CustoHook } from "../hook";
+import { CustoTypeError } from "../../utils/errors";
 
 export function buildCustoComponent<Props>(
-	hook: () => CustoComponent<Props>
+	hook: () => CustoComponent<Props>,
+	path: string
 ): React.ComponentType<Props>;
 export function buildCustoComponent<Props>(
-	hook: () => CustoHook<(props: Props) => CustoComponent<Props>>
+	hook: () => CustoHook<(props: Props) => CustoComponent<Props>>,
+	path: string
 ): React.ComponentType<Props>;
 export function buildCustoComponent<Props>(
 	hook: () =>
 		| CustoComponent<Props>
-		| CustoHook<(props: Props) => CustoComponent<Props>>
+		| CustoHook<(props: Props) => CustoComponent<Props>>,
+	path: string
 ): React.ComponentType<Props> {
 	return React.forwardRef(function CustComponentWrapper(
 		props: any,
@@ -36,6 +40,13 @@ export function buildCustoComponent<Props>(
 				const val = valRef.current;
 				const custComponent =
 					val instanceof CustoHook ? val.use(props) : val;
+				if (!(custComponent instanceof CustoComponent)) {
+					throw new CustoTypeError(
+						`expected CustoComponent, got ${custComponent} ${
+							path ? " at " + path : ""
+						}`
+					);
+				}
 
 				return custComponent.render({ ...props, ref });
 			});

@@ -49,13 +49,14 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 					x => untypedGetProp(x as any, ...prefixes, key),
 					[]
 				);
+			const path = [...prefixes, key].join(".");
 			if (
 				val === CustoType.component ||
 				val instanceof CustoComponent ||
 				(val instanceof CustoHook && val.type === CustoType.component)
 			) {
 				// Component
-				final[key] = buildCustoComponent(getVal);
+				final[key] = buildCustoComponent(getVal, path);
 			} else if (
 				val === CustoType.text ||
 				val instanceof CustoText ||
@@ -64,7 +65,8 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 				// Text
 				final[key] = buildCustoText(
 					getVal,
-					options.getTextTransformationHook
+					options.getTextTransformationHook,
+					path
 				);
 			} else if (
 				val === CustoType.data ||
@@ -72,13 +74,13 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 				(val instanceof CustoHook && val.type === CustoType.data)
 			) {
 				// Data
-				final[key] = buildCustoData(getVal);
+				final[key] = buildCustoData(getVal, path);
 			} else if (
 				val === CustoType.hook ||
 				(val instanceof CustoHook && val.type === CustoType.hook)
 			) {
 				// Hook
-				final[key] = buildCustoHook(getVal);
+				final[key] = buildCustoHook(getVal, path);
 			} else if (typeof val === "object" && val && (val as any).$$end$$) {
 				//
 			} else {
