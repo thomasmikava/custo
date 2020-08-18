@@ -150,7 +150,7 @@ export const createProviderMergingLogic = <
 
 type Meta = (CustoMergeFlag | null | undefined)[];
 
-interface WithMeta<V> {
+export interface WithMeta<V> {
 	value: V;
 	meta: Meta;
 }
