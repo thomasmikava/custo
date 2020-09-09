@@ -1,10 +1,12 @@
+import { isCustoClass } from ".";
+
 export function deepCopyCustomizations<T>(x: T): T {
 	const val = x as any;
 	if (typeof val !== "object" || val === null) {
 		return val;
 	}
 
-	if (val.$$end$$) return val;
+	if (isCustoClass(val)) return val as any;
 
 	if (val instanceof Date) {
 		return new Date(val) as any;

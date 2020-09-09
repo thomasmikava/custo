@@ -12,10 +12,12 @@ export enum CustoMergeFlagEnum {
 	avoidLinking = 4,
 }
 export type CustoMergeFlag = CustoMergeFlagEnum | string;
-export type custoMergeFlags = CustoMergeFlag[] | ReadonlySet<CustoMergeFlag>;
+export type custoMergeFlags =
+	| ReadonlyArray<CustoMergeFlag>
+	| ReadonlySet<CustoMergeFlag>;
 
 export const flattenFlags = (
-	deepFlags: custoMergeFlags[]
+	deepFlags: custoMergeFlags | readonly custoMergeFlags[]
 ): Set<CustoMergeFlag> => {
 	const flags = new Set<CustoMergeFlag>();
 	if (!deepFlags) return flags;

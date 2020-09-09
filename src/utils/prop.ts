@@ -21,3 +21,36 @@ export function getAbsoluteProperty(obj: object, deepKey: string) {
 	}
 	return last;
 }
+
+export const deepMapObject = (
+	obj: any,
+	decisionFn: (
+		val: any,
+		keys: (string | number | symbol)[]
+	) => { stop: true; newVal: any } | { stop: false }
+) => {
+	const decision = decisionFn(obj, []);
+	if (decision.stop) {
+		return decision.newVal;
+	}
+	const helper = (
+		prefixes: (string | number | symbol)[],
+		obj: any,
+		final: any = {}
+	) => {
+		for (const key in obj) {
+			const val = obj[key];
+			const path = [...prefixes, key];
+			const decision = decisionFn(val, path);
+			if (decision.stop) {
+				final[key] = decision.newVal;
+			} else if (typeof val === "object") {
+				final[key] = {};
+				helper(path, obj[key], final[key]);
+			}
+		}
+		return final;
+	};
+	const result = helper([], obj);
+	return result as any;
+};

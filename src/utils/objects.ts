@@ -7,6 +7,7 @@ import {
 	getMemoizedFlags,
 } from "../flags";
 import { CustoHook } from "../classes/hook";
+import { isCustoClass } from ".";
 
 const defaultLintMapContainer = new MultiDimentionalWeakMap(3);
 
@@ -65,8 +66,7 @@ export const createLinkFn = ({
 			return;
 		}
 		if (typeof obj1 !== "object" || obj1 === null) return;
-		// if ((obj1 as any).$$end$$) return;
-		if ((obj1 as any).$$end$$ && (obj2[key] as any).$$end$$) {
+		if (isCustoClass(obj1) && isCustoClass(obj2[key])) {
 			if (avoidMergingClassesIfExplicitelySet) return;
 			obj2[key] = mergeCustoClasses(
 				obj2[key] as any,
@@ -98,7 +98,7 @@ const mergeCustoClasses = (
 			const second =
 				right instanceof CustoHook ? right.use(...args) : right;
 			const value = useMemo(() => {
-				if (first && first.$$end$$ && second && second.$$end$$) {
+				if (isCustoClass(first) && isCustoClass(second)) {
 					return mergeCustoClasses(
 						first as CustoClass,
 						second as CustoClass,
@@ -201,8 +201,8 @@ export function mergeCustomizations<
 		}
 
 		if (
-			object2[p].$$end$$ &&
-			obj1[p].$$end$$ &&
+			isCustoClass(object2[p]) &&
+			isCustoClass(obj1[p]) &&
 			!avoidCustomizationsMerging
 		) {
 			obj1[p] = mergeCustoClasses(
@@ -213,8 +213,8 @@ export function mergeCustomizations<
 			);
 		} else if (
 			object2[p].constructor === Object &&
-			!obj1[p].$$end$$ &&
-			!object2[p].$$end$$
+			!isCustoClass(obj1[p]) &&
+			!isCustoClass(object2[p])
 		) {
 			obj1[p] = mergeCustomizations({
 				object1: obj1[p],

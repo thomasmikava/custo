@@ -4,14 +4,18 @@ import { HookChangeError, CustoTypeError } from "../../utils/errors";
 
 export function buildCustoHook<Fn extends (...args: any[]) => any>(
 	hook: () => CustoHook<Fn>,
-	path: string
+	path: string,
+	defaultValue?: CustoHook<Fn>
 ): CustoHook<Fn> {
-	return CustoHook.createDataHook(
+	return CustoHook.createRawDataHook(
 		(...args: Parameters<Fn>): ReturnType<Fn> => {
-			const val = hook();
+			let val = hook();
+			if (val === undefined && defaultValue !== undefined) {
+				val = defaultValue;
+			}
 			if (!(val instanceof CustoHook)) {
 				throw new CustoTypeError(
-					`Expected CustomizableDataHook or CustomizableData but got ${val} ${
+					`Expected CustoHook but got ${val} ${
 						path ? " at " + path : ""
 					}`
 				);
@@ -22,7 +26,7 @@ export function buildCustoHook<Fn extends (...args: any[]) => any>(
 				// hook has been changed
 				if (!val.isSafe) {
 					throw new HookChangeError(
-						"hook changed in CustomizableDataHook. Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
+						"hook changed in CustoHook. Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
 					);
 				}
 			}

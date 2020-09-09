@@ -8,22 +8,27 @@ import {
 	CustoMergeFlag,
 } from "../flags";
 import { removeKeys } from "../utils/objects";
+import { unionWith, subtractSet } from "../utils/set";
 
-export class CustoComponent<Props extends Record<any, any>>
+export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	implements CustoClass {
 	public readonly component: React.ComponentType<any> | string | null;
 	public fakePropsTransformer: (args: Props) => void;
 	private readonly defaultProps: Partial<Props>;
 	readonly $$end$$: true = true;
 	private readonly mergeStartegy?: (
-		currentComponent: CustoComponent<any>,
-		secondaryComponent: CustoComponent<any>,
+		currentComponent: CustoComponent<any, Ref>,
+		secondaryComponent: CustoComponent<any, unknown>,
 		mergeFlags: ReadonlySet<CustoMergeFlag>
-	) => CustoComponent<any>;
+	) => CustoComponent<any, any>;
 	private readonly propsMergeStrategy?: (
 		currentComponentProps: Record<any, any>,
 		secondaryComponentProps: Record<any, any>,
 		mergeFlags: ReadonlySet<CustoMergeFlag>
+	) => Record<any, any>;
+	private readonly propsToDefaultPropsMergeStrategy?: (
+		props: Record<any, any>,
+		defProps: Record<any, any>
 	) => Record<any, any>;
 
 	private readonly avoidMergingDifferentComponents: boolean;
@@ -32,12 +37,17 @@ export class CustoComponent<Props extends Record<any, any>>
 	private readonly labels: Set<CustomizableLabels | string>;
 	private readonly name?: string;
 	private readonly stripPropKeys?: readonly (number | string | symbol)[];
+	private readonly additionalMergeFlags?: ReadonlySet<CustoMergeFlag>;
+	private readonly subtractiveMergeFlags?: ReadonlySet<CustoMergeFlag>;
 
 	/* eslint-disable */
-	private readonly outerBeforeComponents: ReadonlyArray<CustoComponent<{}>> = [];
-	private readonly outerAfterComponents: ReadonlyArray<CustoComponent<{}>> = [];
-	private readonly innerStartComponents: ReadonlyArray<CustoComponent<{}>> = [];
-	private readonly innerEndComponents: ReadonlyArray<CustoComponent<{}>> = [];
+	private readonly outerBeforeComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
+	private readonly outerAfterComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
+	private readonly outerWrapperComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
+	private readonly outermostWrapperComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
+	private readonly innerStartComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
+	private readonly innerEndComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
+	private readonly innerWrapperComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
 	private readonly transformProps: (inProps: Props) => Record<any, any> = (props) => props;
 	/* eslint-enable */
 
@@ -59,6 +69,16 @@ export class CustoComponent<Props extends Record<any, any>>
 				additionalOptions.outerAfterComponents
 			);
 		}
+		if (additionalOptions.outerWrapperComponents) {
+			this.outerWrapperComponents = toArray(
+				additionalOptions.outerWrapperComponents
+			);
+		}
+		if (additionalOptions.outermostWrapperComponents) {
+			this.outermostWrapperComponents = toArray(
+				additionalOptions.outermostWrapperComponents
+			);
+		}
 		if (additionalOptions.innerStartComponents) {
 			this.innerStartComponents = toArray(
 				additionalOptions.innerStartComponents
@@ -69,12 +89,19 @@ export class CustoComponent<Props extends Record<any, any>>
 				additionalOptions.innerEndComponents
 			);
 		}
+		if (additionalOptions.innerWrapperComponents) {
+			this.innerWrapperComponents = toArray(
+				additionalOptions.innerWrapperComponents
+			);
+		}
 		if (additionalOptions.transformProps) {
 			this.transformProps = additionalOptions.transformProps;
 		}
 		this.name = additionalOptions.name;
 		this.mergeStartegy = additionalOptions.mergeStartegy;
 		this.propsMergeStrategy = additionalOptions.propsMergeStrategy;
+		this.propsToDefaultPropsMergeStrategy =
+			additionalOptions.propsToDefaultPropsMergeStrategy;
 		this.avoidAnyMerging = !!additionalOptions.avoidAnyMerging;
 		this.avoidLinkageMerging = !!additionalOptions.avoidLinkageMerging;
 		this.avoidMergingDifferentComponents = !!additionalOptions.avoidMergingDifferentComponents;
@@ -82,6 +109,8 @@ export class CustoComponent<Props extends Record<any, any>>
 			? new Set(additionalOptions.labels)
 			: new Set();
 		this.stripPropKeys = additionalOptions.stripPropKeys;
+		this.additionalMergeFlags = additionalOptions.additionalMergeFlags;
+		this.subtractiveMergeFlags = additionalOptions.subtractiveMergeFlags;
 	}
 
 	render(props: Props) {
@@ -98,6 +127,8 @@ export class CustoComponent<Props extends Record<any, any>>
 
 		let children = Array.isArray(initialChildren)
 			? initialChildren
+			: initialChildren === undefined
+			? []
 			: [initialChildren];
 		if (
 			this.innerStartComponents.length ||
@@ -108,39 +139,70 @@ export class CustoComponent<Props extends Record<any, any>>
 				.concat(children)
 				.concat(this.innerEndComponents.map(renderMap));
 		}
+		let inner = children;
+		if (this.innerWrapperComponents.length > 0) {
+			let innerComp = React.createElement(React.Fragment, {}, ...inner);
+			innerComp = wrapInComps(innerComp, ...this.innerWrapperComponents);
+			inner = [innerComp];
+		}
 
-		const mainElement = React.createElement(
+		let mainElement = React.createElement(
 			this.component as any,
 			finalProps,
 			...children
 		);
+		if (this.outerWrapperComponents.length > 0) {
+			mainElement = wrapInComps(
+				mainElement,
+				...this.outerWrapperComponents
+			) as any;
+		}
 		if (
 			this.outerBeforeComponents.length === 0 &&
-			this.outerAfterComponents.length === 0
+			this.outerAfterComponents.length === 0 &&
+			this.outermostWrapperComponents.length === 0
 		) {
 			return mainElement;
 		}
-		return (
-			<React.Fragment>
-				{this.outerBeforeComponents.map(renderMap)}
-				{mainElement}
-				{this.outerAfterComponents.map(renderMap)}
-			</React.Fragment>
+		const children2 = React.createElement(
+			React.Fragment,
+			{},
+			this.outerBeforeComponents.map(renderMap),
+			mainElement,
+			this.outerAfterComponents.map(renderMap)
 		);
+		if (this.outermostWrapperComponents.length === 0) {
+			return children2;
+		} else {
+			return wrapInComps(children2, ...this.outermostWrapperComponents);
+		}
 	}
 
 	mergeClass(
 		cl: CustoClass,
 		mergeFlags?: custoMergeFlags
-	): CustoComponent<Props> {
+	): CustoComponent<Props, Ref> {
 		try {
 			if (cl === this) return this;
-			const mergeFlagsSet: ReadonlySet<CustoMergeFlag> = mergeFlags
+			const mergeFlagsSet: Set<CustoMergeFlag> = mergeFlags
 				? new Set(mergeFlags)
 				: new Set();
+			if (this.additionalMergeFlags) {
+				unionWith.call(mergeFlagsSet, this.additionalMergeFlags);
+			}
+			if (this.subtractiveMergeFlags) {
+				subtractSet.call(mergeFlagsSet, this.subtractiveMergeFlags);
+			}
 			if (!(cl instanceof CustoComponent)) return this;
 			else if (this.mergeStartegy) {
 				return this.mergeStartegy(this, cl, mergeFlagsSet);
+			}
+			const component =
+				this.component === null || this.component === undefined
+					? cl.component
+					: this.component;
+			if (this.component === null) {
+				console.log(component);
 			}
 			if (this.avoidAnyMerging || cl.avoidAnyMerging) {
 				return this;
@@ -172,7 +234,7 @@ export class CustoComponent<Props extends Record<any, any>>
 			if (
 				(this.avoidMergingDifferentComponents ||
 					cl.avoidMergingDifferentComponents) &&
-				this.component !== cl.component
+				component !== cl.component
 			) {
 				return this;
 			}
@@ -182,6 +244,9 @@ export class CustoComponent<Props extends Record<any, any>>
 			) {
 				return this;
 			}
+			if (this.component === null) {
+				console.log("msh", component);
+			}
 			if (this.propsMergeStrategy) {
 				const mergedProps = this.propsMergeStrategy(
 					this.defaultProps,
@@ -189,13 +254,13 @@ export class CustoComponent<Props extends Record<any, any>>
 					mergeFlagsSet
 				) as Partial<Props>;
 				return new CustoComponent(
-					this.component,
+					component,
 					mergedProps,
 					this.getCopiedAdditionalOptions()
 				);
 			}
 			if (
-				typeof this.component === "string" &&
+				typeof component === "string" &&
 				typeof cl.component === "string"
 			) {
 				const mergedProps = deepMergeHTMLProps(
@@ -203,8 +268,15 @@ export class CustoComponent<Props extends Record<any, any>>
 					cl.defaultProps
 				) as Partial<Props>;
 				return new CustoComponent(
-					this.component,
+					component,
 					mergedProps,
+					this.getCopiedAdditionalOptions()
+				);
+			}
+			if (component !== this.component) {
+				return new CustoComponent(
+					component,
+					this.defaultProps,
 					this.getCopiedAdditionalOptions()
 				);
 			}
@@ -215,18 +287,30 @@ export class CustoComponent<Props extends Record<any, any>>
 	}
 
 	getMergedProps<T>(props: T): T {
-		const mergedProps = { ...this.defaultProps, ...props } as any;
-		return mergedProps as Props;
+		if (this.propsToDefaultPropsMergeStrategy) {
+			return this.propsToDefaultPropsMergeStrategy(
+				props,
+				this.defaultProps
+			);
+		}
+		return { ...this.defaultProps, ...props } as Props;
 	}
 
 	/** Returns new Customized Component and adds new component to it */
 	addComponent(
-		place: "outerBefore" | "outerAfter" | "innerStart" | "innerEnd",
+		place:
+			| "outerBefore"
+			| "outerAfter"
+			| "outerWrapper"
+			| "outermostWrapper"
+			| "innerStart"
+			| "innerEnd"
+			| "innerWrapper",
 		/** single or array of customized components */
 		component: ComponentsOrArray,
 		/** circular index */
 		index?: number
-	): CustoComponent<Props> {
+	): CustoComponent<Props, Ref> {
 		const cloned = this.clone();
 		const array = cloned.getComponentsArr(place);
 		index = typeof index === "number" ? index : -1;
@@ -236,7 +320,14 @@ export class CustoComponent<Props extends Record<any, any>>
 	}
 
 	private getComponentsArr(
-		place: "outerBefore" | "outerAfter" | "innerStart" | "innerEnd"
+		place:
+			| "outerBefore"
+			| "outerAfter"
+			| "outerWrapper"
+			| "outermostWrapper"
+			| "innerStart"
+			| "innerEnd"
+			| "innerWrapper"
 	) {
 		if (place === "innerEnd") {
 			return this.innerEndComponents;
@@ -244,16 +335,25 @@ export class CustoComponent<Props extends Record<any, any>>
 		if (place === "innerStart") {
 			return this.innerStartComponents;
 		}
+		if (place === "innerWrapper") {
+			return this.innerWrapperComponents;
+		}
 		if (place === "outerAfter") {
 			return this.outerAfterComponents;
 		}
 		if (place === "outerBefore") {
 			return this.outerBeforeComponents;
 		}
+		if (place === "outerWrapper") {
+			return this.outerWrapperComponents;
+		}
+		if (place === "outermostWrapper") {
+			return this.outermostWrapperComponents;
+		}
 		throw new Error("incorrect place " + place);
 	}
 
-	clone(): CustoComponent<Props> {
+	clone(): CustoComponent<Props, Ref> {
 		return new CustoComponent(
 			this.component,
 			this.defaultProps,
@@ -263,10 +363,13 @@ export class CustoComponent<Props extends Record<any, any>>
 
 	private getCopiedAdditionalOptions(): CustoComponentOptions<any> {
 		return {
-			innerEndComponents: [...this.innerEndComponents],
-			innerStartComponents: [...this.innerStartComponents],
 			outerAfterComponents: [...this.outerAfterComponents],
 			outerBeforeComponents: [...this.outerBeforeComponents],
+			outerWrapperComponents: [...this.outerWrapperComponents],
+			outermostWrapperComponents: [...this.outermostWrapperComponents],
+			innerEndComponents: [...this.innerEndComponents],
+			innerStartComponents: [...this.innerStartComponents],
+			innerWrapperComponents: [...this.innerWrapperComponents],
 			avoidMergingDifferentComponents: this
 				.avoidMergingDifferentComponents,
 			mergeStartegy: this.mergeStartegy,
@@ -277,6 +380,8 @@ export class CustoComponent<Props extends Record<any, any>>
 			name: this.name,
 			transformProps: this.transformProps,
 			stripPropKeys: this.stripPropKeys,
+			additionalMergeFlags: this.additionalMergeFlags,
+			subtractiveMergeFlags: this.subtractiveMergeFlags,
 		};
 	}
 
@@ -288,7 +393,8 @@ export class CustoComponent<Props extends Record<any, any>>
 			>
 		>
 	): CustoComponent<
-		NormProps<Component extends React.ComponentType<infer R> ? R : never>
+		NormProps<Component extends React.ComponentType<infer R> ? R : never>,
+		unknown
 	>;
 	static create<
 		Component extends React.ComponentType<any>,
@@ -300,7 +406,7 @@ export class CustoComponent<Props extends Record<any, any>>
 			InProps,
 			Component extends React.ComponentType<infer R> ? R : never
 		>
-	): CustoComponent<InProps>;
+	): CustoComponent<InProps, unknown>;
 	static create<
 		OutProps extends Record<any, any>,
 		InProps extends Record<any, any> = OutProps
@@ -308,7 +414,7 @@ export class CustoComponent<Props extends Record<any, any>>
 		comp: null,
 		defaultProps?: Partial<InProps>,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
-	): CustoComponent<InProps>;
+	): CustoComponent<InProps, unknown>;
 	static create<
 		OutProps extends HTMLProps<any>,
 		InProps extends Record<any, any> = OutProps
@@ -316,7 +422,7 @@ export class CustoComponent<Props extends Record<any, any>>
 		comp: string,
 		defaultProps?: Partial<InProps>,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
-	): CustoComponent<InProps>;
+	): CustoComponent<InProps, unknown>;
 	static create<
 		OutProps extends Record<any, any>,
 		InProps extends Record<any, any> = OutProps
@@ -324,8 +430,8 @@ export class CustoComponent<Props extends Record<any, any>>
 		comp: React.ComponentType<OutProps> | string | null,
 		defaultProps?: Partial<InProps>,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
-	): CustoComponent<InProps> {
-		return new CustoComponent<InProps>(
+	): CustoComponent<InProps, unknown> {
+		return new CustoComponent<InProps, unknown>(
 			comp,
 			defaultProps,
 			additionalOptions
@@ -345,27 +451,38 @@ export interface CustoComponentOptions<
 	name?: string;
 	outerBeforeComponents?: ComponentsOrArray;
 	outerAfterComponents?: ComponentsOrArray;
+	outerWrapperComponents?: ComponentsOrArray;
+	outermostWrapperComponents?: ComponentsOrArray;
 	innerStartComponents?: ComponentsOrArray;
 	innerEndComponents?: ComponentsOrArray;
+	innerWrapperComponents?: ComponentsOrArray;
 	mergeStartegy?: (
-		currentComponent: CustoComponent<any>,
-		secondaryComponent: CustoComponent<any>,
-		mergeFlags: ReadonlySet<CustoMergeFlagEnum>
-	) => CustoComponent<any>;
+		currentComponent: CustoComponent<any, unknown>,
+		secondaryComponent: CustoComponent<any, unknown>,
+		mergeFlags: ReadonlySet<CustoMergeFlag>
+	) => CustoComponent<any, unknown>;
 	propsMergeStrategy?: (
 		currentComponentProps: Record<any, any>,
 		secondaryComponentProps: Record<any, any>,
 		mergeFlags: ReadonlySet<CustoMergeFlag>
 	) => Record<any, any>;
+	propsToDefaultPropsMergeStrategy?: (
+		props: InProps,
+		defProps: Partial<InProps>
+	) => InProps;
 	avoidAnyMerging?: boolean;
 	avoidLinkageMerging?: boolean;
 	avoidMergingDifferentComponents?: boolean;
 	labels?: Iterable<CustomizableLabels | string>;
+	additionalMergeFlags?: ReadonlySet<CustoMergeFlag>;
+	subtractiveMergeFlags?: ReadonlySet<CustoMergeFlag>;
 	transformProps?: (inProps: InProps) => OutProps;
 	stripPropKeys?: readonly (number | string | symbol)[];
 }
 
-type ComponentsOrArray = ReadonlyArray<CustoComponent<{}>> | CustoComponent<{}>;
+export type ComponentsOrArray =
+	| ReadonlyArray<CustoComponent<{}, unknown>>
+	| CustoComponent<{}, unknown>;
 
 const toArray = <T extends any>(el: T): T extends readonly any[] ? T : [T] => {
 	if (Array.isArray(el)) return el as any;
@@ -384,6 +501,18 @@ const getCirculatedIndex = (index: number, length: number) => {
 	return index;
 };
 
-const renderMap = (e: CustoComponent<any>, i: number) => {
+const renderMap = (e: CustoComponent<any, unknown>, i: number) => {
 	return e.render({ key: i });
+};
+const wrapInComps = (
+	comp: JSX.Element,
+	...wrappers: CustoComponent<any, unknown>[]
+) => {
+	console.log("wrapInCompswrapInComps");
+	let result = comp;
+	for (let i = wrappers.length - 1; i >= 0; i--) {
+		const wrapper = wrappers[i];
+		result = wrapper.render({ children: result });
+	}
+	return result;
 };

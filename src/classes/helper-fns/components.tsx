@@ -4,25 +4,33 @@ import { useVersion } from "../../utils/hooks";
 import { CustoHook } from "../hook";
 import { CustoTypeError } from "../../utils/errors";
 
-export function buildCustoComponent<Props>(
-	hook: () => CustoComponent<Props>,
-	path: string
+export function buildCustoComponent<Props, Ref = unknown>(
+	hook: () => CustoComponent<Props, Ref>,
+	path: string,
+	defaultValue?: CustoComponent<Props, Ref>
 ): React.ComponentType<Props>;
-export function buildCustoComponent<Props>(
-	hook: () => CustoHook<(props: Props) => CustoComponent<Props>>,
-	path: string
+export function buildCustoComponent<Props, Ref = unknown>(
+	hook: () => CustoHook<(props: Props) => CustoComponent<Props, Ref>>,
+	path: string,
+	defaultValue?: CustoHook<(props: Props) => CustoComponent<Props, Ref>>
 ): React.ComponentType<Props>;
-export function buildCustoComponent<Props>(
+export function buildCustoComponent<Props, Ref = unknown>(
 	hook: () =>
-		| CustoComponent<Props>
-		| CustoHook<(props: Props) => CustoComponent<Props>>,
-	path: string
+		| CustoComponent<Props, Ref>
+		| CustoHook<(props: Props) => CustoComponent<Props, Ref>>,
+	path: string,
+	defaultValue?:
+		| CustoComponent<Props, Ref>
+		| CustoHook<(props: Props) => CustoComponent<Props, Ref>>
 ): React.ComponentType<Props> {
 	return React.forwardRef(function CustComponentWrapper(
 		props: any,
 		ref: any
 	) {
-		const val = hook();
+		let val = hook();
+		if (val === undefined && defaultValue !== undefined) {
+			val = defaultValue;
+		}
 		const valRef = useRef(val);
 		valRef.current = val;
 		const dependency = val instanceof CustoHook ? val.use : null;

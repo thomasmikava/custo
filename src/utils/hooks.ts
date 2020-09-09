@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { untypedGetProp } from "./prop";
 import { getDeeplyOptimizedValue } from "./deep-copy";
 import { isValidWeakMapKey } from "./objects";
+import { isCustoClass } from ".";
 
 export const useUntypedProperty = (obj: any, ...keys: string[]) => {
 	return useMemo(() => {
@@ -70,8 +71,7 @@ export const createDeeplyOptimizedCustomizedPropsHook = <
 				computed,
 				(oldValue, newValue) => {
 					const areCusto =
-						(oldValue && (oldValue as any).$$end$$) ||
-						(newValue && (newValue as any).$$end$$);
+						isCustoClass(oldValue) || isCustoClass(newValue);
 					if (!areCusto) return { skip: true };
 					return { skip: false, leaveOld: false };
 				}

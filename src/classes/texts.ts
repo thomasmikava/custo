@@ -1,29 +1,30 @@
 import { CustoClass } from "../interfaces";
 import { CustoTypeError } from "../utils/errors";
 
-type richtext = string | number | null | JSX.Element;
+export type custoTextInType = string | number | null | JSX.Element;
+export type custoTextOutType = string | number | null | JSX.Element;
 
 export class CustoText<Props extends CustoTextProps = CustoTextProps>
 	implements CustoClass {
-	private readonly text: richtext;
+	private readonly text: custoTextInType;
 	readonly $$end$$: true = true;
 
-	private constructor(text: richtext) {
+	private constructor(text: custoTextInType) {
 		this.text = text;
 	}
 
-	static create(text: richtext) {
+	static create(text: custoTextInType) {
 		return new CustoText(text);
 	}
 
-	getRawText() {
+	getRaw() {
 		return this.text;
 	}
 
-	render(
-		props: Props,
-		textTransformer?: (oldText: richtext) => richtext
-	): Exclude<richtext, number> {
+	useTransformed(
+		props: CustoTextProps = {},
+		textTransformer?: (oldText: custoTextInType) => custoTextOutType
+	): custoTextOutType {
 		let transformed;
 		try {
 			transformed = textTransformer
@@ -34,6 +35,14 @@ export class CustoText<Props extends CustoTextProps = CustoTextProps>
 			transformed = this.text;
 		}
 		if (props.disableTextTransformer) transformed = this.text;
+		return transformed;
+	}
+
+	render(
+		props: Props,
+		textTransformer?: (oldText: custoTextInType) => custoTextInType
+	): Exclude<custoTextInType, number> {
+		const transformed = this.useTransformed(props, textTransformer);
 		if (typeof transformed === "number") return transformed.toString();
 		return transformed;
 	}

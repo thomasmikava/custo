@@ -8,30 +8,30 @@ import { custoMergeFlags, CustoMergeFlagEnum, CustoMergeFlag } from "../flags";
 
 export const createProviders = <
 	RawValue extends Record<any, any>,
-	Value = WithMeta<RawValue>,
+	Value = CustoProviderRawValue<RawValue>,
 	LayerData = DeeplyOptional<RawValue>
 >({
 	defaultValue,
-	defaultMeta,
+	defaultMergeFlags,
 	layerTransformationHook = (x => x) as any,
 	contextDisplayName,
 	rawToFinalValueHook,
 	mergeDecisionFn,
 }: {
 	layerTransformationHook?: (arg: LayerData) => RawValue;
-	rawToFinalValueHook?: (data: WithMeta<RawValue>) => Value;
+	rawToFinalValueHook?: (data: CustoProviderRawValue<RawValue>) => Value;
 	contextDisplayName?: string;
 	mergeDecisionFn?: MergeDecisionFn;
 	defaultValue: RawValue | undefined;
-	defaultMeta?: Meta | null;
+	defaultMergeFlags?: custoMergeFlags | null;
 }) => {
 	const memoContainer = new MultiDimentionalWeakMap(4);
 
-	const contextDrfaultValue: WithMeta<RawValue> | undefined =
+	const contextDrfaultValue: CustoProviderRawValue<RawValue> | undefined =
 		defaultValue === undefined
 			? undefined
 			: {
-					meta: defaultMeta ?? [],
+					mergeFlags: defaultMergeFlags ?? [],
 					value: defaultValue,
 			  };
 
@@ -50,7 +50,7 @@ export const createProviders = <
 
 	const FullUnmergingProvider = NormalizedQuestionContentCustomizationCont.addProvider<
 		LayerData
-	>(wrapInMeta(layerTransformationHook, () => null));
+	>(wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined })));
 
 	// merges everything
 	const PartialMergingProvider = NormalizedQuestionContentCustomizationCont.addProvider(
@@ -66,7 +66,7 @@ export const createProviders = <
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
-			avoidDefaultCustomizationsMerging: true,
+			avoidPackageCustoMerging: true,
 			mergeDecisionFn,
 		})
 	);
@@ -77,8 +77,8 @@ export const createProviders = <
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
-			avoidNormalCustomizationsMerging: true,
-			avoidDefaultCustomizationsMerging: true,
+			avoidNonPackageCustoMerging: true,
+			avoidPackageCustoMerging: true,
 			mergeDecisionFn,
 		})
 	);
@@ -100,38 +100,43 @@ export const createProviderMergingLogic = <
 >({
 	transformationHook = x => x as FinalValue,
 	memoContainer = new MultiDimentionalWeakMap(4),
-	avoidNormalCustomizationsMerging,
-	avoidDefaultCustomizationsMerging,
+	avoidNonPackageCustoMerging,
+	avoidPackageCustoMerging,
 	mergeFlags: defaultMergingFlags,
 	mergeDecisionFn,
 }: {
 	transformationHook?: (arg: LayerValue) => FinalValue;
 	memoContainer?: MultiDimentionalWeakMap<4>;
-	avoidNormalCustomizationsMerging?: boolean;
-	avoidDefaultCustomizationsMerging?: boolean;
+	avoidNonPackageCustoMerging?: boolean;
+	avoidPackageCustoMerging?: boolean;
 	mergeFlags?: custoMergeFlags;
 	mergeDecisionFn?: MergeDecisionFn;
 }) => {
 	let avoidCustomizationsMerging = false;
-	if (avoidNormalCustomizationsMerging && avoidDefaultCustomizationsMerging) {
+	if (avoidNonPackageCustoMerging && avoidPackageCustoMerging) {
 		avoidCustomizationsMerging = true;
 	}
 	const mergeFlags: CustoMergeFlag[] = [...(defaultMergingFlags || [])];
-	if (avoidNormalCustomizationsMerging) {
+	if (avoidNonPackageCustoMerging) {
 		mergeFlags.push(CustoMergeFlagEnum.avoidWithNonPackageValue);
 	}
-	if (avoidDefaultCustomizationsMerging) {
+	if (avoidPackageCustoMerging) {
 		mergeFlags.push(CustoMergeFlagEnum.avoidWithPackageDefaultValue);
 	}
-	const getCurrentMetaHook = (customizations: LayerValue, prevMeta: any) => {
-		return mergeFlags;
+	const getCurrentMetaHook = (
+		customizations: LayerValue,
+		prevMeta: any
+	): Omit<CustoProviderRawValue<any>, "value"> => {
+		return { mergeFlags };
 	};
 
 	const fn = (
 		customizations: LayerValue,
-		prevVal: FinalValue
+		prevVal: FinalValue,
+		mergedMeta: Omit<CustoProviderRawValue<any>, "value">
 	): FinalValue => {
 		const transformed = transformationHook(customizations);
+		const mergeFlags = mergedMeta.mergeFlags;
 		const b = useMemo(() => {
 			return mergeCustomizations({
 				object1: transformed,
@@ -148,41 +153,59 @@ export const createProviderMergingLogic = <
 	return wrapInMeta(fn, getCurrentMetaHook);
 };
 
-type Meta = (CustoMergeFlag | null | undefined)[];
-
-export interface WithMeta<V> {
+export interface CustoProviderRawValue<V> {
 	value: V;
-	meta: Meta;
+	mergeFlags?: custoMergeFlags;
 }
 
 const wrapInMeta = <Data, TransformedData>(
 	getValueHook: (
-		customizations: Data,
-		prevVal: TransformedData
+		currentVal: Data,
+		prevVal: TransformedData,
+		mergedMeta: Omit<CustoProviderRawValue<any>, "value">
 	) => TransformedData,
-	getCurrentMetaHook: (customizations: Data, prevMeta: any) => any
-): ((
-	customizations: Data,
-	prevVal: WithMeta<TransformedData>
-) => WithMeta<TransformedData>) => {
-	return (
+	getCurrentMetaHook: (
 		customizations: Data,
-		prevValWithMeta: WithMeta<TransformedData>
+		prevMeta: any
+	) => Omit<CustoProviderRawValue<any>, "value">
+): ((
+	currentVal: Data,
+	prevVal: CustoProviderRawValue<TransformedData>
+) => CustoProviderRawValue<TransformedData>) => {
+	return (
+		currentVal: Data,
+		prevValWithMeta: CustoProviderRawValue<TransformedData>
 	) => {
 		const currentMeta = getCurrentMetaHook(
-			customizations,
-			prevValWithMeta.meta
+			currentVal,
+			prevValWithMeta.mergeFlags
 		);
-		const meta = useMemo(() => {
-			return [currentMeta, ...(prevValWithMeta.meta || [])];
-		}, [currentMeta, prevValWithMeta.meta]);
-		const value = getValueHook(customizations, prevValWithMeta.value);
-		return useMemo(
-			(): WithMeta<TransformedData> => ({
-				meta,
-				value,
+
+		const mergeFlags = useMemo((): custoMergeFlags | undefined => {
+			return new Set([
+				...(currentMeta.mergeFlags || []),
+				...(prevValWithMeta.mergeFlags || []),
+			]);
+		}, [currentMeta, prevValWithMeta.mergeFlags]);
+
+		const mergedMeta = useMemo(
+			(): Omit<CustoProviderRawValue<any>, "value"> => ({
+				mergeFlags,
 			}),
-			[meta, value]
+			[mergeFlags]
+		);
+
+		const value = getValueHook(
+			currentVal,
+			prevValWithMeta.value,
+			mergedMeta
+		);
+		return useMemo(
+			(): CustoProviderRawValue<TransformedData> => ({
+				value,
+				...mergedMeta,
+			}),
+			[mergedMeta, value]
 		);
 	};
 };

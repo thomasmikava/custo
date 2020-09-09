@@ -1,12 +1,14 @@
-import { CreateCusto } from "./create";
+import { CreateCusto, transformToCusto } from "./create";
 import { CustoComponent } from "./classes/components";
 import {
 	createProviderMergingLogic,
 	createProviders,
+	CustoProviderRawValue,
 } from "./components/providers";
 import { CustoMergeFlagEnum } from "./flags";
 import { CustoType } from "./interfaces";
 import { WrapInCustHookChangeError, InjectHook } from "./components/wrappers";
+import { createComponentsTransformation } from "./classes/helper-fns/transformations";
 
 export {
 	CreateCusto,
@@ -17,4 +19,7 @@ export {
 	CustoType,
 	WrapInCustHookChangeError,
 	InjectHook,
+	CustoProviderRawValue,
+	transformToCusto,
+	createComponentsTransformation,
 };

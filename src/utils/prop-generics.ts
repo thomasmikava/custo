@@ -18,8 +18,8 @@ export type GeneralCustoText<
 	Props extends CustoTextProps = CustoTextProps
 > = Hey<CustoText<Props>, [Props]>;
 
-export type GeneralCustoComp<T extends Record<any, any>> = Hey<
-	CustoComponent<T>,
+export type GeneralCustoComp<T extends Record<any, any>, Ref = unknown> = Hey<
+	CustoComponent<T, Ref>,
 	[T]
 >;
 
@@ -27,4 +27,6 @@ export type GeneralCustData<Data, HiddenArgs extends readonly any[] = []> =
 	| CustoData<Data, HiddenArgs>
 	| CustoHook<(...args: HiddenArgs) => Data>;
 
-export type GeneralCustoHook<Fn extends (...args: any[]) => any> = CustoHook<Fn>;
+export type GeneralCustoHook<Fn extends (...args: any[]) => any> = CustoHook<
+	Fn
+>;
