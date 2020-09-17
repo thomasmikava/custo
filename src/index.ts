@@ -9,6 +9,7 @@ import { CustoMergeFlagEnum } from "./flags";
 import { CustoType } from "./interfaces";
 import { WrapInCustHookChangeError, InjectHook } from "./components/wrappers";
 import { createComponentsTransformation } from "./classes/helper-fns/transformations";
+import { toGeneralCusto } from "./utils/prop-generics";
 
 export {
 	CreateCusto,
@@ -22,4 +23,5 @@ export {
 	CustoProviderRawValue,
 	transformToCusto,
 	createComponentsTransformation,
+	toGeneralCusto,
 };

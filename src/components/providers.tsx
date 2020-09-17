@@ -35,25 +35,25 @@ export const createProviders = <
 					value: defaultValue,
 			  };
 
-	const NormalizedQuestionContentCustomizationCont = StackedContext.create(
+	const Container = StackedContext.create(
 		contextDrfaultValue!,
 		{ rawToFinalValueHook }
 	);
 	if (contextDisplayName) {
-		NormalizedQuestionContentCustomizationCont.context.setContextName(
+		Container.context.setContextName(
 			contextDisplayName
 		);
 	}
 
 	const FullValueProvider =
-		NormalizedQuestionContentCustomizationCont.context.Provider;
+		Container.context.Provider;
 
-	const FullUnmergingProvider = NormalizedQuestionContentCustomizationCont.addProvider<
+	const FullNonMergingProvider = Container.addProvider<
 		LayerData
 	>(wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined })));
 
 	// merges everything
-	const PartialMergingProvider = NormalizedQuestionContentCustomizationCont.addProvider(
+	const PartialMergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
@@ -62,7 +62,7 @@ export const createProviders = <
 	);
 
 	// merges everything except default value
-	const PartialNonPackageMergingProvider = NormalizedQuestionContentCustomizationCont.addProvider(
+	const PartialNonPackageMergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
@@ -73,7 +73,7 @@ export const createProviders = <
 	(window as any).mergingMemoContainer = memoContainer;
 
 	// does not merge anything
-	const PartialUnmergingProvider = NormalizedQuestionContentCustomizationCont.addProvider(
+	const PartialNonMergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
@@ -84,12 +84,12 @@ export const createProviders = <
 	);
 
 	return {
-		Container: NormalizedQuestionContentCustomizationCont,
+		Container,
 		FullValueProvider,
-		FullUnmergingProvider,
+		FullNonMergingProvider,
 		PartialMergingProvider,
 		PartialNonPackageMergingProvider,
-		PartialUnmergingProvider,
+		PartialNonMergingProvider,
 		memoContainer,
 	};
 };
