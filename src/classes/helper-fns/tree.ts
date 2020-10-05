@@ -3,7 +3,7 @@ import React from "react";
 import { CustoComponent } from "../components";
 import { CustoText, CustoTextProps, custoTextInType } from "../texts";
 import { CustoHook } from "../hook";
-import { ContextSelectorMiniHook } from "react-flexible-contexts";
+import { ContextSelectorMiniHook, DynamicContext, StackedContext } from "react-flexible-contexts";
 import { CustoType } from "../../interfaces";
 import { CustoData } from "../data";
 import { untypedGetProp } from "../../utils/prop";
@@ -14,6 +14,7 @@ import { buildCustoHook } from "./hook";
 import { isCustoClass } from "../../utils";
 import { DeeplyOptional } from "../../utils/generics";
 import { CustoTypeToGeneralClass } from "../interfaces";
+import { CustoProviderRawValue } from "../..";
 
 export type ToCustoTreeObj<T> = T extends (...args: any[]) => void
 	? CustoType
@@ -36,11 +37,26 @@ export interface TreeOptions<Obj extends Record<any, any>> {
 	};
 }
 
-export const buildCustoTree = <Obj extends Record<any, any>>(
+const getArgs = <Obj>(args: any[]): { obj: Obj, useSelector: ContextSelectorMiniHook<readonly unknown[]>, options: TreeOptions<Obj> } => {
+	if (args[0] instanceof StackedContext) {
+		return {obj: args[0].context.defaultValueGetter().value, useSelector: args[0].context.useSelector, options: args[1] || {}}
+	}
+	return {obj: args[0], useSelector: args[1], options: args[2] || {}}
+}
+
+export function buildCustoTree<Obj extends Record<any, any>>(
 	obj: Obj,
 	useSelector: ContextSelectorMiniHook<readonly unknown[]>,
-	options: TreeOptions<Obj> = {}
-): CustoTree<Obj> => {
+	options?: TreeOptions<Obj>
+): CustoTree<Obj>;
+export function buildCustoTree<Obj extends Record<any, any>>(
+	stackedContainer: StackedContext<any, CustoProviderRawValue<Obj>, DynamicContext<any, any>>,
+	options?: TreeOptions<Obj>
+): CustoTree<Obj>;
+export function buildCustoTree<Obj extends Record<any, any>>(
+	...args: any
+): CustoTree<Obj> {
+	const { obj, useSelector, options } = getArgs<Obj>(args);
 	const defaultValuesByTypes = options.defaultValuesByTypes || {};
 	const prefixes = options.prefixes || ["value"];
 	const helper = (
@@ -122,11 +138,11 @@ export const buildCustoTree = <Obj extends Record<any, any>>(
 
 export type CustoTree<T> = T extends { $$end$$: true }
 	? T extends CustoComponent<infer Props, infer Ref>
-		? React.RefForwardingComponent<Ref, Props>
+		? React.ForwardRefRenderFunction<Ref, Props>
 		: T extends CustoHook<
 				(prop: any) => CustoComponent<infer Props, infer Ref>
 		  >
-		? React.RefForwardingComponent<Ref, Props>
+		? React.ForwardRefRenderFunction<Ref, Props>
 		: T extends CustoText
 		? CustoTextComponent<CustoTextProps>
 		: T extends CustoHook<(props: infer Props) => CustoText>

@@ -138,7 +138,7 @@ export function buildCustoText<Props extends CustoTextProps>(
 
 export type CustoTextComponent<
 	Props extends CustoTextProps
-> = React.RefForwardingComponent<unknown, Props> & {
+> = React.ForwardRefRenderFunction<unknown, Props> & {
 	useRawValue: () => custoTextInType;
 	useValue: () => custoTextOutType;
 };

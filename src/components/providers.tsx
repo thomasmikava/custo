@@ -35,22 +35,18 @@ export const createProviders = <
 					value: defaultValue,
 			  };
 
-	const Container = StackedContext.create(
-		contextDrfaultValue!,
-		{ rawToFinalValueHook }
-	);
+	const Container = StackedContext.create(contextDrfaultValue!, {
+		rawToFinalValueHook,
+	});
 	if (contextDisplayName) {
-		Container.context.setContextName(
-			contextDisplayName
-		);
+		Container.context.setContextName(contextDisplayName);
 	}
 
-	const FullValueProvider =
-		Container.context.Provider;
+	const FullValueProvider = Container.context.Provider;
 
-	const FullNonMergingProvider = Container.addProvider<
-		LayerData
-	>(wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined })));
+	const FullNonMergingProvider = Container.addProvider<LayerData>(
+		wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined }))
+	);
 
 	// merges everything
 	const PartialMergingProvider = Container.addProvider(
@@ -157,6 +153,8 @@ export interface CustoProviderRawValue<V> {
 	value: V;
 	mergeFlags?: custoMergeFlags;
 }
+export type UnwrapCustoProviderRawValue<T extends any> = T extends CustoProviderRawValue<infer V> ? V : never;
+export type UnwrapContainerValue<T extends any> = T extends StackedContext<any, CustoProviderRawValue<infer Obj>, any> ? Obj : never;
 
 const wrapInMeta = <Data, TransformedData>(
 	getValueHook: (

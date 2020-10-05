@@ -4,6 +4,7 @@ import {
 	createProviderMergingLogic,
 	createProviders,
 	CustoProviderRawValue,
+	UnwrapContainerValue,
 } from "./components/providers";
 import { CustoMergeFlagEnum } from "./flags";
 import { CustoType } from "./interfaces";
@@ -24,4 +25,5 @@ export {
 	transformToCusto,
 	createComponentsTransformation,
 	toGeneralCusto,
+	UnwrapContainerValue,
 };

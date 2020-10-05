@@ -201,9 +201,6 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				this.component === null || this.component === undefined
 					? cl.component
 					: this.component;
-			if (this.component === null) {
-				console.log(component);
-			}
 			if (this.avoidAnyMerging || cl.avoidAnyMerging) {
 				return this;
 			}
@@ -243,9 +240,6 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				mergeFlagsSet.has(CustoMergeFlagEnum.linking)
 			) {
 				return this;
-			}
-			if (this.component === null) {
-				console.log("msh", component);
 			}
 			if (this.propsMergeStrategy) {
 				const mergedProps = this.propsMergeStrategy(
@@ -415,14 +409,18 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		defaultProps?: Partial<InProps>,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
 	): CustoComponent<InProps, unknown>;
+	static create(
+		comp: string,
+		defaultProps?: HTMLProps<any>
+	): CustoComponent<HTMLProps<any>, unknown>;
 	static create<
 		OutProps extends HTMLProps<any>,
 		InProps extends Record<any, any> = OutProps
 	>(
 		comp: string,
 		defaultProps?: Partial<InProps>,
-		additionalOptions?: CustoComponentOptions<InProps, OutProps>
-	): CustoComponent<InProps, unknown>;
+		additionalOptions?: CustoComponentOptions<Partial<InProps>, OutProps>
+	): CustoComponent<Partial<InProps>, unknown>;
 	static create<
 		OutProps extends Record<any, any>,
 		InProps extends Record<any, any> = OutProps
@@ -508,7 +506,6 @@ const wrapInComps = (
 	comp: JSX.Element,
 	...wrappers: CustoComponent<any, unknown>[]
 ) => {
-	console.log("wrapInCompswrapInComps");
 	let result = comp;
 	for (let i = wrappers.length - 1; i >= 0; i--) {
 		const wrapper = wrappers[i];

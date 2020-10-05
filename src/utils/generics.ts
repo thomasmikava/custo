@@ -34,7 +34,7 @@ export type ComponentRef<C> = C extends React.Component
 	? Props extends { ref?: React.Ref<infer R> }
 		? R
 		: never
-	: C extends React.RefForwardingComponent<infer T, any>
+	: C extends React.ForwardRefRenderFunction<infer T, any>
 	? T
 	: (C extends React.JSXElementConstructor<{ ref?: infer R }>
 		? R
