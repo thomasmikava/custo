@@ -2,7 +2,7 @@ import { deepMapObject } from "../../utils/prop";
 import { CustoHook } from "../hook";
 import { CustoText } from "../texts";
 import { CustoType, CustoComponent } from "../..";
-import { CustoComponentOptions } from "../components";
+import { CustoComponentOptions, mergeValueOrFn } from "../components";
 import React from "react";
 import { unionWith } from "../../utils/set";
 import { isCustoClass } from "../../utils";
@@ -106,7 +106,7 @@ export type transformToCustoTexts<T> = T extends CustoClass
 ///
 
 export const createComponentsTransformation = (
-	defaultProps: Record<any, any>,
+	defaultProps: Record<any, any> | (() => Record<any, any>),
 	options: CustoComponentOptions<any, any> = {}
 ) => {
 	return <T>(obj: T): transformToCustoComponents<T> => {
@@ -156,14 +156,18 @@ export const createComponentsTransformation = (
 
 export const transformCustoComp = <C extends CustoComponent<any, any>>(
 	comp: C,
-	defaultProps: Record<any, any>,
+	defaultProps: Record<any, any> | (() => Record<any, any>),
 	options: CustoComponentOptions<any, any>
 ): transformToCustoComponents<C> => {
 	const newComp = (comp.clone() as C) as Mutable<C>;
-	(newComp as any).defaultProps = {
-		...defaultProps,
-		...((newComp as any).defaultProps || {}),
-	};
+	(newComp as any).defaultProps = mergeValueOrFn(
+		defaultProps,
+		((newComp as any).defaultProps || {}),
+		(v1, v2) => ({
+			...v1,
+			...v2,
+		})
+	);
 	const keys = Object.keys(options);
 	for (let i = 0; i < keys.length; i++) {
 		const key = keys[i];

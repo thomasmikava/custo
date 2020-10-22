@@ -9,12 +9,13 @@ import {
 } from "../flags";
 import { removeKeys } from "../utils/objects";
 import { unionWith, subtractSet } from "../utils/set";
+import { pickHTMLProps } from "react-sanitize-dom-props";
 
 export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	implements CustoClass {
 	public readonly component: React.ComponentType<any> | string | null;
 	public fakePropsTransformer: (args: Props) => void;
-	private readonly defaultProps: Partial<Props>;
+	private readonly defaultProps: ValueOrFn<Partial<Props>, [Props]>;
 	readonly $$end$$: true = true;
 	private readonly mergeStartegy?: (
 		currentComponent: CustoComponent<any, Ref>,
@@ -36,6 +37,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	private readonly avoidLinkageMerging: boolean;
 	private readonly labels: Set<CustomizableLabels | string>;
 	private readonly name?: string;
+	private readonly avoidStrippingInvalidDOMProps: boolean;
 	private readonly stripPropKeys?: readonly (number | string | symbol)[];
 	private readonly additionalMergeFlags?: ReadonlySet<CustoMergeFlag>;
 	private readonly subtractiveMergeFlags?: ReadonlySet<CustoMergeFlag>;
@@ -53,7 +55,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 
 	private constructor(
 		comp: React.ComponentType<any> | string | null,
-		defaultProps?: Partial<Props>,
+		defaultProps?: ValueOrFn<Partial<Props>, [any]>,
 		additionalOptions?: CustoComponentOptions<Props>
 	) {
 		this.component = comp;
@@ -111,6 +113,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		this.stripPropKeys = additionalOptions.stripPropKeys;
 		this.additionalMergeFlags = additionalOptions.additionalMergeFlags;
 		this.subtractiveMergeFlags = additionalOptions.subtractiveMergeFlags;
+		this.avoidStrippingInvalidDOMProps = !!additionalOptions.avoidStrippingInvalidDOMProps;
 	}
 
 	render(props: Props) {
@@ -118,12 +121,15 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			children: initialChildren,
 			...mergedProps
 		} = this.getMergedProps(props);
-		const finalProps = this.transformProps(
+		let finalProps = this.transformProps(
 			removeKeys(
 				mergedProps,
 				...((this.stripPropKeys || []) as never[])
 			) as Props
 		);
+		if (typeof this.component === "string" && !this.avoidStrippingInvalidDOMProps) {
+			finalProps = pickHTMLProps(finalProps, false);
+		}
 
 		let children = Array.isArray(initialChildren)
 			? initialChildren
@@ -242,11 +248,21 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				return this;
 			}
 			if (this.propsMergeStrategy) {
-				const mergedProps = this.propsMergeStrategy(
+				const propsMergeStrategy = this.propsMergeStrategy;
+				const normalizedPropsMergeStrategy = (
+					currentComponentProps: Record<any, any>,
+					secondaryComponentProps: Record<any, any>
+				) =>
+					propsMergeStrategy(
+						currentComponentProps,
+						secondaryComponentProps,
+						mergeFlagsSet
+					);
+				const mergedProps = mergeValueOrFn(
 					this.defaultProps,
 					cl.defaultProps,
-					mergeFlagsSet
-				) as Partial<Props>;
+					normalizedPropsMergeStrategy
+				) as ValueOrFn<Partial<Props>, [Props]>;
 				return new CustoComponent(
 					component,
 					mergedProps,
@@ -257,10 +273,11 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				typeof component === "string" &&
 				typeof cl.component === "string"
 			) {
-				const mergedProps = deepMergeHTMLProps(
+				const mergedProps = mergeValueOrFn(
 					this.defaultProps,
-					cl.defaultProps
-				) as Partial<Props>;
+					cl.defaultProps,
+					deepMergeHTMLProps,
+				) as ValueOrFn<Partial<Props>, [Props]>;
 				return new CustoComponent(
 					component,
 					mergedProps,
@@ -280,14 +297,15 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		}
 	}
 
-	getMergedProps<T>(props: T): T {
+	getMergedProps(props: Props) {
+		const defaultProps = typeof this.defaultProps === "function" ? this.defaultProps(props as Props) : this.defaultProps;
 		if (this.propsToDefaultPropsMergeStrategy) {
 			return this.propsToDefaultPropsMergeStrategy(
 				props,
-				this.defaultProps
+				defaultProps
 			);
 		}
-		return { ...this.defaultProps, ...props } as Props;
+		return { ...defaultProps, ...props } as Props;
 	}
 
 	/** Returns new Customized Component and adds new component to it */
@@ -376,16 +394,31 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			stripPropKeys: this.stripPropKeys,
 			additionalMergeFlags: this.additionalMergeFlags,
 			subtractiveMergeFlags: this.subtractiveMergeFlags,
+			avoidStrippingInvalidDOMProps: this.avoidStrippingInvalidDOMProps,
 		};
 	}
 
+	static create(
+		comp: string,
+		defaultProps?: ValueOrFn<HTMLProps<any>, [HTMLProps<any>]>
+	): CustoComponent<HTMLProps<any>, unknown>;
+	static create<
+		OutProps extends HTMLProps<any>,
+		InProps extends Record<any, any> = OutProps
+	>(
+		comp: string,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
+		additionalOptions?: CustoComponentOptions<Partial<InProps>, OutProps>
+	): CustoComponent<Partial<InProps>, unknown>;
 	static create<Component extends React.ComponentType<any>>(
 		comp: Component,
-		defaultProps?: Partial<
+		defaultProps?: ValueOrFn<Partial<
 			NormProps<
 				Component extends React.ComponentType<infer R> ? R : never
 			>
-		>
+		>, [NormProps<
+			Component extends React.ComponentType<infer R> ? R : never
+		>]>
 	): CustoComponent<
 		NormProps<Component extends React.ComponentType<infer R> ? R : never>,
 		unknown
@@ -395,7 +428,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		InProps extends Record<any, any>
 	>(
 		comp: Component,
-		defaultProps?: Partial<InProps>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
 		additionalOptions?: CustoComponentOptions<
 			InProps,
 			Component extends React.ComponentType<infer R> ? R : never
@@ -406,27 +439,15 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		InProps extends Record<any, any> = OutProps
 	>(
 		comp: null,
-		defaultProps?: Partial<InProps>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
 	): CustoComponent<InProps, unknown>;
-	static create(
-		comp: string,
-		defaultProps?: HTMLProps<any>
-	): CustoComponent<HTMLProps<any>, unknown>;
-	static create<
-		OutProps extends HTMLProps<any>,
-		InProps extends Record<any, any> = OutProps
-	>(
-		comp: string,
-		defaultProps?: Partial<InProps>,
-		additionalOptions?: CustoComponentOptions<Partial<InProps>, OutProps>
-	): CustoComponent<Partial<InProps>, unknown>;
 	static create<
 		OutProps extends Record<any, any>,
 		InProps extends Record<any, any> = OutProps
 	>(
 		comp: React.ComponentType<OutProps> | string | null,
-		defaultProps?: Partial<InProps>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
 	): CustoComponent<InProps, unknown> {
 		return new CustoComponent<InProps, unknown>(
@@ -441,6 +462,8 @@ type NormProps<T> = unknown extends T ? {} : T;
 
 export type OptionalKeys<T, K extends string | number | symbol> = Omit<T, K> &
 	Partial<{ [key in K & keyof T]: T[key] }>;
+
+export type ValueOrFn<V, Args extends readonly any[] = []> = V | ((...args: Args) => V);
 
 export interface CustoComponentOptions<
 	InProps extends Record<any, any>,
@@ -476,6 +499,7 @@ export interface CustoComponentOptions<
 	subtractiveMergeFlags?: ReadonlySet<CustoMergeFlag>;
 	transformProps?: (inProps: InProps) => OutProps;
 	stripPropKeys?: readonly (number | string | symbol)[];
+	avoidStrippingInvalidDOMProps?: boolean;
 }
 
 export type ComponentsOrArray =
@@ -486,6 +510,17 @@ const toArray = <T extends any>(el: T): T extends readonly any[] ? T : [T] => {
 	if (Array.isArray(el)) return el as any;
 	return [el] as any;
 };
+
+export const mergeValueOrFn = <K extends Record<any, any>, T extends K | ((...args: any[]) => K)>(v1: T, v2: T, mergeFn: (first: K, second: K) => K): T => {
+	if (typeof v1 !== "function" && typeof v2 !== "function") {
+		return mergeFn(v1 as K, v2 as K);
+	}
+	return ((...args: any[]) => {
+		const val1 = typeof v1 === "function" ? (v1 as (...args: any[]) => K)(...args) : v1 as K;
+		const val2 = typeof v2 === "function" ? (v2 as (...args: any[]) => K)(...args) : v2 as K;
+		return mergeFn(val1 as K, val2 as K);
+	}) as T;
+}
 
 const getCirculatedIndex = (index: number, length: number) => {
 	if (index >= 0 && index < length) return index;

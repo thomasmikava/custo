@@ -18,7 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "react-flexible-contexts": "^0.0.8",
-    "weakmap-polyfill": "^2.0.2"
+    "weakmap-polyfill": "^2.0.2",
+    "react-sanitize-dom-props": "^0.0.1"
   },
   "peerDependencies": {
     "react": ">=16.8.0"
