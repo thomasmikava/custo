@@ -20,11 +20,15 @@ export const CreateCusto = {
 		Component: CustoHook.createComponentHook,
 		Text: CustoHook.createTextHook,
 		Data: CustoHook.createDataHook,
+		Hook: CustoHook.createHookOfHook,
+		Function: CustoHook.createHookOfFn,
 	},
 	functionOf: {
 		Component: CustoHook.createComponentFn,
 		Text: CustoHook.createTextFn,
 		Data: CustoHook.createDataFn,
+		Hook: CustoHook.createFnOfHook,
+		Function: CustoHook.createFnOfFn,
 	},
 	Tree: buildCustoTree as typeof buildCustoTree,
 };

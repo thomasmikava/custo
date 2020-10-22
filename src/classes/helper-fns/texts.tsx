@@ -88,7 +88,7 @@ export function buildCustoText<Props extends CustoTextProps>(
 			// hook has been changed
 			if (!(val instanceof CustoHook) || !val.isSafe) {
 				throw new HookChangeError(
-					"hook changed in CustoHook. Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
+					"hook changed in CustoHook (path: " + path + "). Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
 				);
 			}
 		}
@@ -121,7 +121,7 @@ export function buildCustoText<Props extends CustoTextProps>(
 		const dependencyRef = useRef(key);
 		if (dependencyRef.current !== key) {
 			throw new HookChangeError(
-				"hook changed in CustoHook. Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
+				"hook changed in CustoHook (path: " + path + "). Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
 			);
 		}
 		dependencyRef.current = key;

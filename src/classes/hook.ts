@@ -12,6 +12,7 @@ export class CustoHook<Fn extends (...args: any[]) => any>
 	readonly transformationFn?: (data: ReturnType<Fn>) => ReturnType<Fn>;
 	readonly type: CustoType = CustoType.component;
 	isSafe: boolean;
+	private unsafelyGetOriginalFn: () => Fn;
 
 	private constructor(
 		fn: Fn,
@@ -30,6 +31,7 @@ export class CustoHook<Fn extends (...args: any[]) => any>
 			return returnValue;
 		} as Fn;
 		this.type = type;
+		this.unsafelyGetOriginalFn = () => fn;
 		this.isSafe = isSafe;
 	}
 
@@ -41,6 +43,55 @@ export class CustoHook<Fn extends (...args: any[]) => any>
 
 	static createFn<Fn extends (...args: any[]) => any>(fn: Fn): CustoHook<Fn> {
 		return new CustoHook(fn, CustoType.hook, true);
+	}
+
+	
+	static createHookOfHook<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
+		fn: Fn
+	): ReturnType<Fn>;
+	static createHookOfHook<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
+		fn: Fn
+	): CustoHook<ReturnType<Fn>>;
+	static createHookOfHook<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
+		fn: Fn
+	): EnsureCustoHook<ReturnType<Fn>> {
+		return new CustoHook(fn, CustoType.hook, false, ensureHook as any) as any;
+	}
+	
+	static createHookOfFn<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
+		fn: Fn
+	): ReturnType<Fn>;
+	static createHookOfFn<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
+		fn: Fn
+	): CustoHook<ReturnType<Fn>>;
+	static createHookOfFn<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
+		fn: Fn
+	): EnsureCustoHook<ReturnType<Fn>> {
+		return new CustoHook(fn, CustoType.hook, false, ensureFn as any) as any;
+	}
+
+	static createFnOfHook<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
+		fn: Fn
+	): ReturnType<Fn>;
+	static createFnOfHook<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
+		fn: Fn
+	): CustoHook<ReturnType<Fn>>;
+	static createFnOfHook<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
+		fn: Fn
+	): EnsureCustoHook<ReturnType<Fn>> {
+		return new CustoHook(fn, CustoType.hook, true, ensureHook as any) as any;
+	}
+	
+	static createFnOfFn<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
+		fn: Fn
+	): ReturnType<Fn>;
+	static createFnOfFn<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
+		fn: Fn
+	): CustoHook<ReturnType<Fn>>;
+	static createFnOfFn<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
+		fn: Fn
+	): EnsureCustoHook<ReturnType<Fn>> {
+		return new CustoHook(fn, CustoType.hook, true, ensureFn as any) as any;
 	}
 
 	static createComponentHook<Props>(
@@ -186,6 +237,22 @@ function ensureComponent<Data>(
 	return CustoComponent.create(data as any) as any;
 }
 
-type inferProps<Data> = Data extends React.ComponentType<infer Props>
-	? Props
-	: never;
+function ensureHook<Data extends CustoHook<any> | ((...args: any[]) => any)>(
+	data: Data
+): EnsureCustoHook<Data> {
+	if (data instanceof CustoHook) {
+		return data as any;
+	}
+	return CustoHook.createHook(data as any) as any;
+}
+
+function ensureFn<Data extends CustoHook<any> | ((...args: any[]) => any)>(
+	data: Data
+): EnsureCustoHook<Data> {
+	if (data instanceof CustoHook) {
+		return data as any;
+	}
+	return CustoHook.createFn(data as any) as any;
+}
+
+export type EnsureCustoHook<Data extends CustoHook<((...args: any[]) => any)> | ((...args: any[]) => any)> = Data extends CustoHook<((...args: any[]) => any)> ? Data : Data extends  ((...args: any[]) => any) ? CustoHook<Data> : never;
