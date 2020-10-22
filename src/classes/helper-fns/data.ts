@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { CustoData } from "../data";
 import { CustoHook } from "../hook";
-import { HookChangeError, CustoTypeError } from "../../utils/errors";
+import { HookChangeError } from "../../utils/errors";
 
 export type Df<Data, Args extends readonly any[]> =
 	| CustoData<Data, Args>

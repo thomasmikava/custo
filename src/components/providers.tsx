@@ -9,7 +9,10 @@ import { ToGeneralCusto, ToVeryGeneralCusto } from "../utils/prop-generics";
 
 export const createProviders = <
 	RawValue extends Record<any, any>,
-	Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, ToGeneralCusto<RawValue>>,
+	Value = CustoProviderRawValue<
+		ToVeryGeneralCusto<RawValue>,
+		ToGeneralCusto<RawValue>
+	>,
 	LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>
 >({
 	defaultValue,
@@ -155,10 +158,23 @@ export interface CustoProviderRawValue<V, hackProp = {}> {
 	mergeFlags?: custoMergeFlags;
 	hackProp?: hackProp;
 }
-export type UnwrapCustoProviderRawValue<T extends any> = T extends CustoProviderRawValue<infer V> ? V : never;
-export type UnwrapContainerValue<T extends any> = T extends StackedContext<any, CustoProviderRawValue<infer Obj, any>, any> ? Obj : never;
-export type UnwrapContainerValueHack<T extends any> = T extends StackedContext<any, CustoProviderRawValue<any, infer Obj>, any> ? Obj : never;
-
+export type UnwrapCustoProviderRawValue<
+	T extends any
+> = T extends CustoProviderRawValue<infer V> ? V : never;
+export type UnwrapContainerValue<T extends any> = T extends StackedContext<
+	any,
+	CustoProviderRawValue<infer Obj, any>,
+	any
+>
+	? Obj
+	: never;
+export type UnwrapContainerValueHack<T extends any> = T extends StackedContext<
+	any,
+	CustoProviderRawValue<any, infer Obj>,
+	any
+>
+	? Obj
+	: never;
 
 const wrapInMeta = <Data, TransformedData>(
 	getValueHook: (

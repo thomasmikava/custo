@@ -14,7 +14,9 @@ import { createComponentsTransformation } from "./classes/helper-fns/transformat
 import { toGeneralCusto, ToVeryGeneralCusto } from "./utils/prop-generics";
 import { DeeplyOptional } from "./utils/generics";
 
-type DeeplyOptionalCustoProviderValue<T> = ToVeryGeneralCusto<DeeplyOptional<UnwrapContainerValueHack<T>>>;
+type DeeplyOptionalCustoProviderValue<T> = ToVeryGeneralCusto<
+	DeeplyOptional<UnwrapContainerValueHack<T>>
+>;
 type CustoProviderValue<T> = UnwrapContainerValue<T>;
 
 export {

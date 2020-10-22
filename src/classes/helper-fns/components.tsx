@@ -2,7 +2,6 @@ import React, { useRef } from "react";
 import { CustoComponent } from "../components";
 import { useVersion } from "../../utils/hooks";
 import { CustoHook } from "../hook";
-import { CustoTypeError } from "../../utils/errors";
 
 export function buildCustoComponent<Props, Ref = unknown>(
 	hook: () => CustoComponent<Props, Ref>,

@@ -162,7 +162,7 @@ export const transformCustoComp = <C extends CustoComponent<any, any>>(
 	const newComp = (comp.clone() as C) as Mutable<C>;
 	(newComp as any).defaultProps = mergeValueOrFn(
 		defaultProps,
-		((newComp as any).defaultProps || {}),
+		(newComp as any).defaultProps || {},
 		(v1, v2) => ({
 			...v1,
 			...v2,

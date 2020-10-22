@@ -45,52 +45,81 @@ export class CustoHook<Fn extends (...args: any[]) => any>
 		return new CustoHook(fn, CustoType.hook, true);
 	}
 
-	
-	static createHookOfHook<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
-		fn: Fn
-	): ReturnType<Fn>;
-	static createHookOfHook<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
-		fn: Fn
-	): CustoHook<ReturnType<Fn>>;
-	static createHookOfHook<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
-		fn: Fn
-	): EnsureCustoHook<ReturnType<Fn>> {
-		return new CustoHook(fn, CustoType.hook, false, ensureHook as any) as any;
+	static createHookOfHook<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => CustoHook<(...args: Params) => any>
+	>(fn: Fn): ReturnType<Fn>;
+	static createHookOfHook<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => (...args: Params) => any
+	>(fn: Fn): CustoHook<ReturnType<Fn>>;
+	static createHookOfHook<
+		Params extends readonly any[],
+		Fn extends (
+			...args: Params
+		) => ((...args: Params) => any) | CustoHook<(...args: Params) => any>
+	>(fn: Fn): EnsureCustoHook<ReturnType<Fn>> {
+		return new CustoHook(
+			fn,
+			CustoType.hook,
+			false,
+			ensureHook as any
+		) as any;
 	}
-	
-	static createHookOfFn<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
-		fn: Fn
-	): ReturnType<Fn>;
-	static createHookOfFn<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
-		fn: Fn
-	): CustoHook<ReturnType<Fn>>;
-	static createHookOfFn<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
-		fn: Fn
-	): EnsureCustoHook<ReturnType<Fn>> {
+
+	static createHookOfFn<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => CustoHook<(...args: Params) => any>
+	>(fn: Fn): ReturnType<Fn>;
+	static createHookOfFn<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => (...args: Params) => any
+	>(fn: Fn): CustoHook<ReturnType<Fn>>;
+	static createHookOfFn<
+		Params extends readonly any[],
+		Fn extends (
+			...args: Params
+		) => ((...args: Params) => any) | CustoHook<(...args: Params) => any>
+	>(fn: Fn): EnsureCustoHook<ReturnType<Fn>> {
 		return new CustoHook(fn, CustoType.hook, false, ensureFn as any) as any;
 	}
 
-	static createFnOfHook<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
-		fn: Fn
-	): ReturnType<Fn>;
-	static createFnOfHook<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
-		fn: Fn
-	): CustoHook<ReturnType<Fn>>;
-	static createFnOfHook<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
-		fn: Fn
-	): EnsureCustoHook<ReturnType<Fn>> {
-		return new CustoHook(fn, CustoType.hook, true, ensureHook as any) as any;
+	static createFnOfHook<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => CustoHook<(...args: Params) => any>
+	>(fn: Fn): ReturnType<Fn>;
+	static createFnOfHook<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => (...args: Params) => any
+	>(fn: Fn): CustoHook<ReturnType<Fn>>;
+	static createFnOfHook<
+		Params extends readonly any[],
+		Fn extends (
+			...args: Params
+		) => ((...args: Params) => any) | CustoHook<(...args: Params) => any>
+	>(fn: Fn): EnsureCustoHook<ReturnType<Fn>> {
+		return new CustoHook(
+			fn,
+			CustoType.hook,
+			true,
+			ensureHook as any
+		) as any;
 	}
-	
-	static createFnOfFn<Params extends readonly any[], Fn extends (...args: Params) => CustoHook<(...args: Params) => any>>(
-		fn: Fn
-	): ReturnType<Fn>;
-	static createFnOfFn<Params extends readonly any[], Fn extends (...args: Params) => (...args: Params) => any>(
-		fn: Fn
-	): CustoHook<ReturnType<Fn>>;
-	static createFnOfFn<Params extends readonly any[], Fn extends (...args: Params) => ((...args: Params) => any) | ( CustoHook<(...args: Params) => any>)>(
-		fn: Fn
-	): EnsureCustoHook<ReturnType<Fn>> {
+
+	static createFnOfFn<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => CustoHook<(...args: Params) => any>
+	>(fn: Fn): ReturnType<Fn>;
+	static createFnOfFn<
+		Params extends readonly any[],
+		Fn extends (...args: Params) => (...args: Params) => any
+	>(fn: Fn): CustoHook<ReturnType<Fn>>;
+	static createFnOfFn<
+		Params extends readonly any[],
+		Fn extends (
+			...args: Params
+		) => ((...args: Params) => any) | CustoHook<(...args: Params) => any>
+	>(fn: Fn): EnsureCustoHook<ReturnType<Fn>> {
 		return new CustoHook(fn, CustoType.hook, true, ensureFn as any) as any;
 	}
 
@@ -255,4 +284,10 @@ function ensureFn<Data extends CustoHook<any> | ((...args: any[]) => any)>(
 	return CustoHook.createFn(data as any) as any;
 }
 
-export type EnsureCustoHook<Data extends CustoHook<((...args: any[]) => any)> | ((...args: any[]) => any)> = Data extends CustoHook<((...args: any[]) => any)> ? Data : Data extends  ((...args: any[]) => any) ? CustoHook<Data> : never;
+export type EnsureCustoHook<
+	Data extends CustoHook<(...args: any[]) => any> | ((...args: any[]) => any)
+> = Data extends CustoHook<(...args: any[]) => any>
+	? Data
+	: Data extends (...args: any[]) => any
+	? CustoHook<Data>
+	: never;

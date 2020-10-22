@@ -40,18 +40,18 @@ export type VeryGeneralCustoText<
 	Props extends CustoTextProps = CustoTextProps
 > = ValueOrHook<CustoText<Props>, [Props]> | RichText;
 
-export type VeryGeneralCustoComp<
-	T extends Record<any, any>,
-	Ref = unknown
-> = ValueOrHook<CustoComponent<T, Ref>, [T]> | React.ComponentType<T>;
+export type VeryGeneralCustoComp<T extends Record<any, any>, Ref = unknown> =
+	| ValueOrHook<CustoComponent<T, Ref>, [T]>
+	| React.ComponentType<T>;
 
 export type VeryGeneralCustData<Data, HiddenArgs extends readonly any[] = []> =
 	| CustoData<Data, HiddenArgs>
-	| CustoHook<(...args: HiddenArgs) => Data> | Data;
+	| CustoHook<(...args: HiddenArgs) => Data>
+	| Data;
 
-export type VeryGeneralCustoHook<Fn extends (...args: any[]) => any> = CustoHook<
-	Fn
-> | Fn;
+export type VeryGeneralCustoHook<Fn extends (...args: any[]) => any> =
+	| CustoHook<Fn>
+	| Fn;
 
 //
 
@@ -80,7 +80,7 @@ export type CustoClassToVeryGeneral<
 	? VeryGeneralCustData<Data, HiidenArgs>
 	: T extends CustoHook<infer Fn>
 	? T | ReturnType<Fn>
-: T;
+	: T;
 
 export type ToGeneralCusto<T> = T extends CustoClass
 	? CustoClassToGeneral<T>
@@ -89,13 +89,13 @@ export type ToGeneralCusto<T> = T extends CustoClass
 			[key in keyof T]: ToGeneralCusto<T[key]>;
 	  }
 	: T;
-	
+
 export type ToVeryGeneralCusto<T> = T extends CustoClass
 	? CustoClassToVeryGeneral<T>
 	: T extends Record<any, any>
 	? {
 			[key in keyof T]: ToVeryGeneralCusto<T[key]>;
-	}
+	  }
 	: T;
 
 export const toGeneralCusto = <T extends any>(val: T): ToGeneralCusto<T> =>

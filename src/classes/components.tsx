@@ -127,7 +127,10 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				...((this.stripPropKeys || []) as never[])
 			) as Props
 		);
-		if (typeof this.component === "string" && !this.avoidStrippingInvalidDOMProps) {
+		if (
+			typeof this.component === "string" &&
+			!this.avoidStrippingInvalidDOMProps
+		) {
 			finalProps = pickHTMLProps(finalProps, false);
 		}
 
@@ -276,7 +279,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				const mergedProps = mergeValueOrFn(
 					this.defaultProps,
 					cl.defaultProps,
-					deepMergeHTMLProps,
+					deepMergeHTMLProps
 				) as ValueOrFn<Partial<Props>, [Props]>;
 				return new CustoComponent(
 					component,
@@ -298,12 +301,12 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	}
 
 	getMergedProps(props: Props) {
-		const defaultProps = typeof this.defaultProps === "function" ? this.defaultProps(props as Props) : this.defaultProps;
+		const defaultProps =
+			typeof this.defaultProps === "function"
+				? this.defaultProps(props as Props)
+				: this.defaultProps;
 		if (this.propsToDefaultPropsMergeStrategy) {
-			return this.propsToDefaultPropsMergeStrategy(
-				props,
-				defaultProps
-			);
+			return this.propsToDefaultPropsMergeStrategy(props, defaultProps);
 		}
 		return { ...defaultProps, ...props } as Props;
 	}
@@ -412,13 +415,18 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	): CustoComponent<Partial<InProps>, unknown>;
 	static create<Component extends React.ComponentType<any>>(
 		comp: Component,
-		defaultProps?: ValueOrFn<Partial<
-			NormProps<
-				Component extends React.ComponentType<infer R> ? R : never
-			>
-		>, [NormProps<
-			Component extends React.ComponentType<infer R> ? R : never
-		>]>
+		defaultProps?: ValueOrFn<
+			Partial<
+				NormProps<
+					Component extends React.ComponentType<infer R> ? R : never
+				>
+			>,
+			[
+				NormProps<
+					Component extends React.ComponentType<infer R> ? R : never
+				>
+			]
+		>
 	): CustoComponent<
 		NormProps<Component extends React.ComponentType<infer R> ? R : never>,
 		unknown
@@ -463,7 +471,9 @@ type NormProps<T> = unknown extends T ? {} : T;
 export type OptionalKeys<T, K extends string | number | symbol> = Omit<T, K> &
 	Partial<{ [key in K & keyof T]: T[key] }>;
 
-export type ValueOrFn<V, Args extends readonly any[] = []> = V | ((...args: Args) => V);
+export type ValueOrFn<V, Args extends readonly any[] = []> =
+	| V
+	| ((...args: Args) => V);
 
 export interface CustoComponentOptions<
 	InProps extends Record<any, any>,
@@ -511,16 +521,29 @@ const toArray = <T extends any>(el: T): T extends readonly any[] ? T : [T] => {
 	return [el] as any;
 };
 
-export const mergeValueOrFn = <K extends Record<any, any>, T extends K | ((...args: any[]) => K)>(v1: T, v2: T, mergeFn: (first: K, second: K) => K): T => {
+export const mergeValueOrFn = <
+	K extends Record<any, any>,
+	T extends K | ((...args: any[]) => K)
+>(
+	v1: T,
+	v2: T,
+	mergeFn: (first: K, second: K) => K
+): T => {
 	if (typeof v1 !== "function" && typeof v2 !== "function") {
 		return mergeFn(v1 as K, v2 as K);
 	}
 	return ((...args: any[]) => {
-		const val1 = typeof v1 === "function" ? (v1 as (...args: any[]) => K)(...args) : v1 as K;
-		const val2 = typeof v2 === "function" ? (v2 as (...args: any[]) => K)(...args) : v2 as K;
+		const val1 =
+			typeof v1 === "function"
+				? (v1 as (...args: any[]) => K)(...args)
+				: (v1 as K);
+		const val2 =
+			typeof v2 === "function"
+				? (v2 as (...args: any[]) => K)(...args)
+				: (v2 as K);
 		return mergeFn(val1 as K, val2 as K);
 	}) as T;
-}
+};
 
 const getCirculatedIndex = (index: number, length: number) => {
 	if (index >= 0 && index < length) return index;
