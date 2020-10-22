@@ -11,6 +11,14 @@ export function buildCustoHook<Fn extends (...args: any[]) => any>(
 		(...args: Parameters<Fn>): ReturnType<Fn> => {
 			let val = useVl(hook(), defaultValue, path, false);
 			const value = val.use(...args);
+			const isValueCustoHook = value instanceof CustoHook;
+			const isValueCustoHookRef = useRef(isValueCustoHook);
+			if (isValueCustoHookRef.current !== isValueCustoHook) {
+				isValueCustoHookRef.current = isValueCustoHook;
+				throw new HookChangeError(
+					"CustoHook must consistently return CustoHook or any value other than CustoHook. (path: " + path + "). Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
+				);
+			}
 			if (value instanceof CustoHook) {
 				return useVl(value, defaultValue, path, true).use(...args);
 			}
@@ -24,11 +32,9 @@ const useVl = <Fn extends (...args: any[]) => any>(val: CustoHook<Fn> | undefine
 		val = defaultValue;
 	}
 	if (!(val instanceof CustoHook)) {
-		throw new CustoTypeError(
-			`Expected CustoHook but got ${val} ${
-				path ? " at " + path : ""
-			}`
-		);
+		const oldVal = val;
+		const newVal = CustoHook.createDataFn(() => oldVal) as CustoHook<Fn>;
+		val = newVal;
 	}
 	const dependency: Fn = isHelper? (val as any).unsafelyGetOriginalFn() : val.use;
 	const dependencyRef = useRef(dependency);

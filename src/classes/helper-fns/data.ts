@@ -51,11 +51,8 @@ export function buildCustoData<Data, Args extends readonly any[]>(
 			}
 			dependencyRef.current = dependency;
 			if (!(val instanceof CustoHook) && !(val instanceof CustoData)) {
-				throw new CustoTypeError(
-					`Expected CustoHook or CustoData but got ${val} ${
-						path ? " at " + path : ""
-					}`
-				);
+				const newVal = CustoData.create(val);
+				val = newVal;
 			}
 			const data = val instanceof CustoHook ? val.use(...args) : val;
 			if (data instanceof CustoData) {

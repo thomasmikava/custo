@@ -50,7 +50,7 @@ export function buildCustoTree<Obj extends Record<any, any>>(
 	options?: TreeOptions<Obj>
 ): CustoTree<Obj>;
 export function buildCustoTree<Obj extends Record<any, any>>(
-	stackedContainer: StackedContext<any, CustoProviderRawValue<Obj>, DynamicContext<any, any>>,
+	stackedContainer: StackedContext<any, CustoProviderRawValue<any, Obj>, DynamicContext<any, any>>,
 	options?: TreeOptions<Obj>
 ): CustoTree<Obj>;
 export function buildCustoTree<Obj extends Record<any, any>>(

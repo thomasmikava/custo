@@ -7,7 +7,7 @@ import {
 	custoTextInType,
 	custoTextOutType,
 } from "../texts";
-import { CustoTypeError, HookChangeError } from "../../utils/errors";
+import { HookChangeError } from "../../utils/errors";
 
 export function buildCustoText<Props extends CustoTextProps>(
 	hook: () =>
@@ -59,15 +59,12 @@ export function buildCustoText<Props extends CustoTextProps>(
 				ref: any
 			) {
 				const val = valRef.current;
-				const custComponent =
+				let custComponent =
 					val instanceof CustoHook ? val.use(props) : val;
 
 				if (!(custComponent instanceof CustoText)) {
-					throw new CustoTypeError(
-						`expected CustoComponent, got ${custComponent} ${
-							path ? " at " + path : ""
-						}`
-					);
+					const newVal = CustoText.create(val as any);
+					custComponent = newVal;
 				}
 
 				return custComponent.render(
@@ -98,7 +95,7 @@ export function buildCustoText<Props extends CustoTextProps>(
 				? val.use(({
 						disableTextTransformer: true,
 				  } as CustoTextProps) as any)
-				: val;
+				: val instanceof CustoText ? val : CustoText.create(val);
 		return custComponent.getRaw();
 	};
 	comp.useValue = () => {
@@ -130,7 +127,7 @@ export function buildCustoText<Props extends CustoTextProps>(
 				? val.use(({
 						disableTextTransformer: true,
 				  } as CustoTextProps) as any)
-				: val;
+				: val instanceof CustoText ? val : CustoText.create(val);
 		return custComponent.useTransformed({}, transformationHook?.use);
 	};
 	return comp;

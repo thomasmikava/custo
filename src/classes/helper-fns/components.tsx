@@ -46,14 +46,11 @@ export function buildCustoComponent<Props, Ref = unknown>(
 				ref: any
 			) {
 				const val = valRef.current;
-				const custComponent =
+				let custComponent =
 					val instanceof CustoHook ? val.use(props) : val;
 				if (!(custComponent instanceof CustoComponent)) {
-					throw new CustoTypeError(
-						`expected CustoComponent, got ${custComponent} ${
-							path ? " at " + path : ""
-						}`
-					);
+					const newVal = CustoComponent.create<Props>(val as any);
+					custComponent = newVal;
 				}
 
 				return custComponent.render({ ...props, ref });
