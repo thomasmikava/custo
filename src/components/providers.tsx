@@ -5,13 +5,13 @@ import { DeeplyOptional } from "../utils/generics";
 import { useMemo } from "react";
 import { MultiDimentionalWeakMap } from "../utils/weak-map";
 import { custoMergeFlags, CustoMergeFlagEnum, CustoMergeFlag } from "../flags";
-import { ToGeneralCusto, ToVeryGeneralCusto } from "../utils/prop-generics";
+import { ToVeryGeneralCusto } from "../utils/prop-generics";
 
 export const createProviders = <
 	RawValue extends Record<any, any>,
 	Value = CustoProviderRawValue<
 		ToVeryGeneralCusto<RawValue>,
-		ToGeneralCusto<RawValue>
+		RawValue
 	>,
 	LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>
 >({
