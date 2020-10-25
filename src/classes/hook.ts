@@ -12,7 +12,7 @@ export class CustoHook<Fn extends (...args: any[]) => any>
 	readonly transformationFn?: (data: ReturnType<Fn>) => ReturnType<Fn>;
 	readonly type: CustoType = CustoType.component;
 	isSafe: boolean;
-	private unsafelyGetOriginalFn: () => Fn;
+	readonly unsafelyGetOriginalFn: () => Fn;
 
 	private constructor(
 		fn: Fn,

@@ -56,7 +56,7 @@ export type VeryGeneralCustoHook<Fn extends (...args: any[]) => any> =
 //
 
 export type NeverOrCustoClass<T> = T extends CustoClass ? T : never;
-export type NeverOrCustoClassReverse<T> = T extends CustoClass ? never : T;
+export type NeverOrRegularFunction<T extends (...args: any) => any> = ReturnType<T> extends CustoClass ? never : T;
 
 export type CustoClassToGeneral<
 	T extends CustoClass
@@ -79,7 +79,7 @@ export type CustoClassToVeryGeneral<
 	: T extends CustoData<infer Data, infer HiidenArgs>
 	? VeryGeneralCustData<Data, HiidenArgs>
 	: T extends CustoHook<infer Fn>
-	? T | ReturnType<Fn>
+	? T | NeverOrRegularFunction<Fn>
 	: T;
 
 export type ToGeneralCusto<T> = T extends CustoClass

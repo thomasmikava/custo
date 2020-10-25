@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { CustoHook } from "../hook";
-import { HookChangeError } from "../../utils/errors";
+import { HookChangeError, CustoTypeError } from "../../utils/errors";
 
 export function buildCustoHook<Fn extends (...args: any[]) => any>(
 	hook: () => CustoHook<Fn>,
@@ -9,7 +9,7 @@ export function buildCustoHook<Fn extends (...args: any[]) => any>(
 ): CustoHook<Fn> {
 	return CustoHook.createRawDataHook(
 		(...args: Parameters<Fn>): ReturnType<Fn> => {
-			const val = useVl(hook(), defaultValue, path, false);
+			const val = useVl(hook(), defaultValue, path);
 			const value = val.use(...args);
 			const isValueCustoHook = value instanceof CustoHook;
 			const isValueCustoHookRef = useRef(isValueCustoHook);
@@ -22,7 +22,7 @@ export function buildCustoHook<Fn extends (...args: any[]) => any>(
 				);
 			}
 			if (value instanceof CustoHook) {
-				return useVl(value, defaultValue, path, true).use(...args);
+				return useVl(value, defaultValue, path).use(...args);
 			}
 			return value;
 		}
@@ -32,20 +32,23 @@ export function buildCustoHook<Fn extends (...args: any[]) => any>(
 const useVl = <Fn extends (...args: any[]) => any>(
 	val: CustoHook<Fn> | undefined,
 	defaultValue: CustoHook<Fn> | undefined,
-	path: string,
-	isHelper: boolean
+	path: string
 ): CustoHook<Fn> => {
 	if (val === undefined && defaultValue !== undefined) {
 		val = defaultValue;
 	}
 	if (!(val instanceof CustoHook)) {
-		const oldVal = val;
-		const newVal = CustoHook.createDataFn(() => oldVal) as CustoHook<Fn>;
+		if (typeof val !== "function") {
+			throw new CustoTypeError(
+				"expected function or CustoHook at path " +
+					path +
+					". received " + val
+			);
+		}
+		const newVal = CustoHook.createHook(val);
 		val = newVal;
 	}
-	const dependency: Fn = isHelper
-		? (val as any).unsafelyGetOriginalFn()
-		: val.use;
+	const dependency: Fn = val.unsafelyGetOriginalFn();
 	const dependencyRef = useRef(dependency);
 	if (dependencyRef.current !== dependency) {
 		// hook has been changed
@@ -53,7 +56,7 @@ const useVl = <Fn extends (...args: any[]) => any>(
 			throw new HookChangeError(
 				"hook changed in CustoHook. (path: " +
 					path +
-					") Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
+					"). Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
 			);
 		}
 	}
