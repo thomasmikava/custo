@@ -103,7 +103,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		this.mergeStartegy = additionalOptions.mergeStartegy;
 		this.propsMergeStrategy = additionalOptions.propsMergeStrategy;
 		this.propsToDefaultPropsMergeStrategy =
-			additionalOptions.propsToDefaultPropsMergeStrategy;
+			additionalOptions.propsToDefaultPropsMergeStrategy as any;
 		this.avoidAnyMerging = !!additionalOptions.avoidAnyMerging;
 		this.avoidLinkageMerging = !!additionalOptions.avoidLinkageMerging;
 		this.avoidMergingDifferentComponents = !!additionalOptions.avoidMergingDifferentComponents;
@@ -121,6 +121,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			children: initialChildren,
 			...mergedProps
 		} = this.getMergedProps(props);
+		const ref = props.ref;
 		let finalProps = this.transformProps(
 			removeKeys(
 				mergedProps,
@@ -157,7 +158,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 
 		let mainElement = React.createElement(
 			this.component as any,
-			finalProps,
+			{ ...finalProps, ref }, // TODO: get ref from finalProps before pickHTMLProps
 			...children
 		);
 		if (this.outerWrapperComponents.length > 0) {
