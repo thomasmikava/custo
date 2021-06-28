@@ -1,5 +1,3 @@
-import "weakmap-polyfill";
-
 const Which: BMapConstructor = WeakMap as any;
 
 export class MultiDimentionalWeakMap<Length extends number> {

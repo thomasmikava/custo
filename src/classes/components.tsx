@@ -55,7 +55,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 
 	private constructor(
 		comp: React.ComponentType<any> | string | null,
-		defaultProps?: ValueOrFn<Partial<Props>, [any]>,
+		defaultProps?: ValueOrFn<Partial<Props>, [any]> | null,
 		additionalOptions?: CustoComponentOptions<Props>
 	) {
 		this.component = comp;
@@ -102,8 +102,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		this.name = additionalOptions.name;
 		this.mergeStartegy = additionalOptions.mergeStartegy;
 		this.propsMergeStrategy = additionalOptions.propsMergeStrategy;
-		this.propsToDefaultPropsMergeStrategy =
-			additionalOptions.propsToDefaultPropsMergeStrategy as any;
+		this.propsToDefaultPropsMergeStrategy = additionalOptions.propsToDefaultPropsMergeStrategy as any;
 		this.avoidAnyMerging = !!additionalOptions.avoidAnyMerging;
 		this.avoidLinkageMerging = !!additionalOptions.avoidLinkageMerging;
 		this.avoidMergingDifferentComponents = !!additionalOptions.avoidMergingDifferentComponents;
@@ -404,14 +403,14 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 
 	static create(
 		comp: string,
-		defaultProps?: ValueOrFn<HTMLProps<any>, [HTMLProps<any>]>
+		defaultProps?: ValueOrFn<HTMLProps<any>, [HTMLProps<any>]> | null
 	): CustoComponent<HTMLProps<any>, unknown>;
 	static create<
 		OutProps extends HTMLProps<any>,
 		InProps extends Record<any, any> = OutProps
 	>(
 		comp: string,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
 		additionalOptions?: CustoComponentOptions<Partial<InProps>, OutProps>
 	): CustoComponent<Partial<InProps>, unknown>;
 	static create<Component extends React.ComponentType<any>>(
@@ -427,7 +426,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 					Component extends React.ComponentType<infer R> ? R : never
 				>
 			]
-		>
+		> | null
 	): CustoComponent<
 		NormProps<Component extends React.ComponentType<infer R> ? R : never>,
 		unknown
@@ -437,7 +436,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		InProps extends Record<any, any>
 	>(
 		comp: Component,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
 		additionalOptions?: CustoComponentOptions<
 			InProps,
 			Component extends React.ComponentType<infer R> ? R : never
@@ -448,7 +447,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		InProps extends Record<any, any> = OutProps
 	>(
 		comp: null,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
 	): CustoComponent<InProps, unknown>;
 	static create<
@@ -456,7 +455,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		InProps extends Record<any, any> = OutProps
 	>(
 		comp: React.ComponentType<OutProps> | string | null,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]>,
+		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
 		additionalOptions?: CustoComponentOptions<InProps, OutProps>
 	): CustoComponent<InProps, unknown> {
 		return new CustoComponent<InProps, unknown>(

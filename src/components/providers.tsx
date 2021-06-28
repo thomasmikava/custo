@@ -1,18 +1,73 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { StackedContext } from "react-flexible-contexts";
+import { DynamicContext, StackedContext } from "react-flexible-contexts";
 import { mergeCustomizations, MergeDecisionFn } from "../utils/objects";
 import { DeeplyOptional } from "../utils/generics";
 import { useMemo } from "react";
 import { MultiDimentionalWeakMap } from "../utils/weak-map";
 import { custoMergeFlags, CustoMergeFlagEnum, CustoMergeFlag } from "../flags";
 import { ToVeryGeneralCusto } from "../utils/prop-generics";
+import { MinimalComponent } from "react-flexible-contexts/lib/dynamic";
+import { PassableAdditionalMetaProps } from "react-flexible-contexts/lib/stacked";
+import { buildCustoTree, CustoTree } from "../classes/helper-fns/tree";
 
-export const createProviders = <
+export interface Providers<LayerData> {
+	PartialMergingProvider: MinimalComponent<
+		{
+			value: LayerData;
+		} & PassableAdditionalMetaProps
+	>;
+	PartialNonPackageMergingProvider: MinimalComponent<
+		{
+			value: LayerData;
+		} & PassableAdditionalMetaProps
+	>;
+	PartialNonMergingProvider: MinimalComponent<
+		{
+			value: LayerData;
+		} & PassableAdditionalMetaProps
+	>;
+	memoContainer: MultiDimentionalWeakMap<4>;
+}
+
+export type CustoProvidersReturnValue<
 	RawValue extends Record<any, any>,
-	Value = CustoProviderRawValue<
-		ToVeryGeneralCusto<RawValue>,
-		RawValue
-	>,
+	Value,
+	LayerData
+> = [CustoTree<RawValue>, Providers<LayerData>] &
+	({
+		Container: StackedContext<
+			CustoProviderRawValue<RawValue, {}>,
+			"value",
+			Value,
+			DynamicContext<CustoProviderRawValue<RawValue, {}>, "value", Value>
+		>;
+	} & Providers<LayerData>);
+
+export function buildCusto<
+	RawValue extends Record<any, any>,
+	Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, RawValue>,
+	LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>
+>({
+	defaultValue,
+	defaultMergeFlags,
+	layerTransformationHook,
+	contextDisplayName,
+	rawToFinalValueHook,
+	mergeDecisionFn,
+}: {
+	layerTransformationHook?: ((arg: LayerData) => RawValue) | undefined;
+	rawToFinalValueHook?:
+		| ((data: CustoProviderRawValue<RawValue, {}>) => Value)
+		| undefined;
+	contextDisplayName?: string | undefined;
+	mergeDecisionFn?: MergeDecisionFn | undefined;
+	defaultValue: RawValue | undefined;
+	defaultMergeFlags?: custoMergeFlags | null | undefined;
+}): CustoProvidersReturnValue<RawValue, Value, LayerData>;
+
+export function buildCusto<
+	RawValue extends Record<any, any>,
+	Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, RawValue>,
 	LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>
 >({
 	defaultValue,
@@ -28,7 +83,7 @@ export const createProviders = <
 	mergeDecisionFn?: MergeDecisionFn;
 	defaultValue: RawValue | undefined;
 	defaultMergeFlags?: custoMergeFlags | null;
-}) => {
+}): CustoProvidersReturnValue<RawValue, Value, LayerData> {
 	const memoContainer = new MultiDimentionalWeakMap(4);
 
 	const contextDrfaultValue: CustoProviderRawValue<RawValue> | undefined =
@@ -39,18 +94,18 @@ export const createProviders = <
 					value: defaultValue,
 			  };
 
-	const Container = StackedContext.create(contextDrfaultValue!, {
+	const Container = StackedContext.create(contextDrfaultValue!, "value", {
 		rawToFinalValueHook,
 	});
 	if (contextDisplayName) {
 		Container.context.setContextName(contextDisplayName);
 	}
 
-	const FullValueProvider = Container.context.Provider;
+	/* const FullValueProvider = Container.context.Provider;
 
 	const FullNonMergingProvider = Container.addProvider<LayerData>(
 		wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined }))
-	);
+	); */
 
 	// merges everything
 	const PartialMergingProvider = Container.addProvider(
@@ -83,16 +138,22 @@ export const createProviders = <
 		})
 	);
 
-	return {
-		Container,
-		FullValueProvider,
-		FullNonMergingProvider,
+	const Providers: Providers<LayerData> = {
 		PartialMergingProvider,
 		PartialNonPackageMergingProvider,
 		PartialNonMergingProvider,
 		memoContainer,
 	};
-};
+
+	const arr = [
+		defaultValue ? buildCustoTree(Container as any) : {},
+		Providers,
+	] as CustoProvidersReturnValue<RawValue, Value, LayerData>;
+	arr.Container = Container;
+	Object.assign(arr, Providers);
+
+	return arr;
+}
 
 export const createProviderMergingLogic = <
 	LayerValue extends Record<any, any>,
@@ -163,6 +224,7 @@ export type UnwrapCustoProviderRawValue<
 > = T extends CustoProviderRawValue<infer V> ? V : never;
 export type UnwrapContainerValue<T extends any> = T extends StackedContext<
 	any,
+	"value",
 	CustoProviderRawValue<infer Obj, any>,
 	any
 >
@@ -170,10 +232,17 @@ export type UnwrapContainerValue<T extends any> = T extends StackedContext<
 	: never;
 export type UnwrapContainerValueHack<T extends any> = T extends StackedContext<
 	any,
+	"value",
 	CustoProviderRawValue<any, infer Obj>,
 	any
 >
 	? Obj
+	: never;
+
+export type UnwrapDeepOptionalValue<T extends any> = T extends {
+	PartialMergingProvider: (arg: { value: infer R }) => any;
+}
+	? R
 	: never;
 
 const wrapInMeta = <Data, TransformedData>(

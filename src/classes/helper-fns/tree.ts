@@ -17,7 +17,7 @@ import { buildCustoData } from "./data";
 import { buildCustoHook } from "./hook";
 import { isCustoClass } from "../../utils";
 import { DeeplyOptional } from "../../utils/generics";
-import { CustoTypeToGeneralClass } from "../interfaces";
+import { CustoTypeToVeryGeneralClass } from "../interfaces";
 import { CustoProviderRawValue } from "../..";
 
 export type ToCustoTreeObj<T> = T extends (...args: any[]) => void
@@ -37,7 +37,7 @@ export interface TreeOptions<Obj extends Record<any, any>> {
 	prefixes?: (string | number | symbol)[];
 	defaultValue?: DeeplyOptional<Obj>;
 	defaultValuesByTypes?: {
-		[key in CustoType]?: CustoTypeToGeneralClass<key>;
+		[key in CustoType]?: CustoTypeToVeryGeneralClass<key>;
 	};
 }
 
@@ -50,7 +50,7 @@ const getArgs = <Obj>(
 } => {
 	if (args[0] instanceof StackedContext) {
 		return {
-			obj: args[0].context.defaultValueGetter().value,
+			obj: args[0].context.modifiedDefaultValueGetter().value,
 			useSelector: args[0].context.useSelector,
 			options: args[1] || {},
 		};
@@ -66,6 +66,7 @@ export function buildCustoTree<Obj extends Record<any, any>>(
 export function buildCustoTree<Obj extends Record<any, any>>(
 	stackedContainer: StackedContext<
 		any,
+		"value",
 		CustoProviderRawValue<any, Obj>,
 		DynamicContext<any, any>
 	>,

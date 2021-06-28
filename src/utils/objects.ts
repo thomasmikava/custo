@@ -32,7 +32,9 @@ export const createLinkFn = ({
 	avoidMergingClassesIfExplicitelySet?: boolean;
 	lintMapContainer?: MultiDimentionalWeakMap<3>;
 }) => {
-	const mergedFlags = getMemoizedFlags([...flags, ...linkingMergeFlags]);
+	const mergedFlags = getMemoizedFlags(
+		flags ? [...flags, ...linkingMergeFlags] : linkingMergeFlags
+	);
 	const link: customizationLinkFn = (
 		obj1: any,
 		obj2: any,

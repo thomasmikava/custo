@@ -3,10 +3,10 @@ import { CustoText } from "./texts";
 import { CustoData } from "./data";
 import { CustoHook } from "./hook";
 import {
-	GeneralCustoComp,
-	GeneralCustoText,
-	GeneralCustData,
-	GeneralCustoHook,
+	VeryGeneralCustoComp,
+	VeryGeneralCustoText,
+	VeryGeneralCustoData,
+	VeryGeneralCustoHook,
 } from "../utils/prop-generics";
 
 export type CustoTypeToClass<
@@ -21,14 +21,14 @@ export type CustoTypeToClass<
 	? CustoHook<any>
 	: never;
 
-export type CustoTypeToGeneralClass<
+export type CustoTypeToVeryGeneralClass<
 	T extends CustoType
 > = T extends CustoType.component
-	? GeneralCustoComp<any, any>
+	? VeryGeneralCustoComp<any, any>
 	: T extends CustoType.text
-	? GeneralCustoText<any>
+	? VeryGeneralCustoText<any>
 	: T extends CustoType.data
-	? GeneralCustData<any, any>
+	? VeryGeneralCustoData<any, any>
 	: T extends CustoType.hook
-	? GeneralCustoHook<any>
+	? VeryGeneralCustoHook<any>
 	: never;

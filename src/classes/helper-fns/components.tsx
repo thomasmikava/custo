@@ -32,7 +32,8 @@ export function buildCustoComponent<Props, Ref = unknown>(
 		}
 		const valRef = useRef(val);
 		valRef.current = val;
-		const dependency = val instanceof CustoHook ? val.use : null;
+		const dependency =
+			val instanceof CustoHook ? val.unsafelyGetOriginalFn() : null;
 		const key = useVersion(
 			dependency,
 			val instanceof CustoHook && val.isSafe
@@ -40,10 +41,7 @@ export function buildCustoComponent<Props, Ref = unknown>(
 
 		const componentRef = useRef<React.ComponentType<any>>();
 		if (!componentRef.current) {
-			componentRef.current = React.forwardRef(function WrapperComponent(
-				props: any,
-				ref: any
-			) {
+			function WrapperComponent(props: any, ref: any) {
 				const val = valRef.current;
 				let custComponent =
 					val instanceof CustoHook ? val.use(props) : val;
@@ -53,7 +51,9 @@ export function buildCustoComponent<Props, Ref = unknown>(
 				}
 
 				return custComponent.render({ ...props, ref });
-			});
+			}
+			(WrapperComponent as any).displayName = "CustoComp-" + path;
+			componentRef.current = React.forwardRef(WrapperComponent);
 		}
 
 		const Component = componentRef.current;

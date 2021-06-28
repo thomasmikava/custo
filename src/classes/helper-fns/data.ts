@@ -37,7 +37,8 @@ export function buildCustoData<Data, Args extends readonly any[]>(
 			if (val === undefined && defaultValue !== undefined) {
 				val = defaultValue;
 			}
-			const dependency = val instanceof CustoHook ? val.use : null;
+			const dependency =
+				val instanceof CustoHook ? val.unsafelyGetOriginalFn() : null;
 			const dependencyRef = useRef(dependency);
 			if (dependencyRef.current !== dependency) {
 				// hook has been changed

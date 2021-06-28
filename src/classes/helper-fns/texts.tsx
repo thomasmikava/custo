@@ -38,10 +38,11 @@ export function buildCustoText<Props extends CustoTextProps>(
 			getTextTransformationHook && getTextTransformationHook();
 		const transformationHookRef = useRef(transformationHook);
 		valRef.current = val;
-		const dep1 = val instanceof CustoHook ? val.use : null;
+		const dep1 =
+			val instanceof CustoHook ? val.unsafelyGetOriginalFn() : null;
 		const dep2 =
 			transformationHook instanceof CustoHook
-				? transformationHook.use
+				? transformationHook.unsafelyGetOriginalFn()
 				: null;
 		const key = useDepsVersion([
 			useVersion(dep1, val instanceof CustoHook && val.isSafe),
@@ -54,10 +55,7 @@ export function buildCustoText<Props extends CustoTextProps>(
 
 		const componentRef = useRef<React.ComponentType<any>>();
 		if (!componentRef.current) {
-			componentRef.current = React.forwardRef(function WrapperComponent(
-				props: any,
-				ref: any
-			) {
+			function WrapperComponent(props: any, ref: any) {
 				const val = valRef.current;
 				let custComponent =
 					val instanceof CustoHook ? val.use(props) : val;
@@ -71,7 +69,9 @@ export function buildCustoText<Props extends CustoTextProps>(
 					{ ...props, ref },
 					transformationHookRef.current?.use
 				) as any;
-			});
+			}
+			(WrapperComponent as any).displayName = "CustoText-" + path;
+			componentRef.current = React.forwardRef(WrapperComponent);
 		}
 
 		const Component = componentRef.current;

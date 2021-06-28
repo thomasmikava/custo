@@ -21,9 +21,6 @@ export function buildCustoHook<Fn extends (...args: any[]) => any>(
 						"). Make sure to wrap your component with WrapInError helper function. Note: CRA still displays error in development mode; just press ESC do hide it"
 				);
 			}
-			if (value instanceof CustoHook) {
-				return useVl(value, defaultValue, path).use(...args);
-			}
 			return value;
 		}
 	) as CustoHook<Fn>;
@@ -38,21 +35,16 @@ const useVl = <Fn extends (...args: any[]) => any>(
 		val = defaultValue;
 	}
 	if (!(val instanceof CustoHook)) {
-		if (typeof val !== "function") {
-			throw new CustoTypeError(
-				"expected function or CustoHook at path " +
-					path +
-					". received " + val
-			);
-		}
-		const newVal = CustoHook.createHook(val);
+		const oldVal = val;
+		const newVal = CustoHook.createFn((() => oldVal) as any);
 		val = newVal;
 	}
-	const dependency: Fn = val.unsafelyGetOriginalFn();
+	const dependency =
+		val instanceof CustoHook ? val.unsafelyGetOriginalFn() : null;
 	const dependencyRef = useRef(dependency);
 	if (dependencyRef.current !== dependency) {
 		// hook has been changed
-		if (!val.isSafe) {
+		if (!(val instanceof CustoHook) || !val.isSafe) {
 			throw new HookChangeError(
 				"hook changed in CustoHook. (path: " +
 					path +

@@ -1,4 +1,4 @@
-import React, { ComponentProps } from "react";
+import React, { ComponentProps, forwardRef } from "react";
 import { HookChangeError } from "../utils/errors";
 import { ComponentRef } from "../utils/generics";
 
@@ -62,8 +62,11 @@ export const InjectHook = <
 
 export const WrapInCustHookChangeError = <P extends Record<any, any>>(
 	Component: React.ComponentType<P>
-): React.ComponentType<P> => {
-	class HookChangeBoundary extends React.Component<P, { key: number }> {
+): React.FC<P> => {
+	class HookChangeBoundary extends React.Component<
+		P & { __$__ref: any },
+		{ key: number }
+	> {
 		state = { key: 0 };
 
 		componentDidCatch = (error, info) => {
@@ -76,10 +79,18 @@ export const WrapInCustHookChangeError = <P extends Record<any, any>>(
 			}));
 		};
 
-		// TODO: do something about refs
 		render() {
-			return <Component {...this.props} key={this.state.key} />;
+			const { __$__ref, ...restProps } = this.props;
+			return (
+				<Component
+					{...this.props}
+					key={this.state.key}
+					ref={__$__ref}
+				/>
+			);
 		}
 	}
-	return HookChangeBoundary;
+	return forwardRef((props: P, ref) => (
+		<HookChangeBoundary {...props} __$__ref={ref} />
+	)) as any;
 };

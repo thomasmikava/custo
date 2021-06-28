@@ -41,6 +41,12 @@ const toCustoFnOrHooks = <T>(
 						: CustoHook.createHook(val),
 			};
 		}
+		if (val === null || typeof val !== "object") {
+			return {
+				stop: true,
+				newVal: val,
+			};
+		}
 		return { stop: false };
 	});
 };
@@ -89,6 +95,12 @@ export const toCustoTexts = <T>(obj: T): transformToCustoTexts<T> => {
 				newVal: CustoText.create(val),
 			};
 		}
+		if (val === null || typeof val !== "object") {
+			return {
+				stop: true,
+				newVal: val,
+			};
+		}
 		return { stop: false };
 	});
 };
@@ -97,6 +109,8 @@ export type transformToCustoTexts<T> = T extends CustoClass
 	? T
 	: T extends string | number | null
 	? CustoText
+	: T extends (...args: any[]) => void
+	? T
 	: T extends Record<any, any>
 	? {
 			[key in keyof T]: transformToCustoTexts<T[key]>;
@@ -147,6 +161,12 @@ export const createComponentsTransformation = (
 				return {
 					stop: true,
 					newVal: CustoComponent.create(val, defaultProps, options),
+				};
+			}
+			if (val === null || typeof val !== "object") {
+				return {
+					stop: true,
+					newVal: val,
 				};
 			}
 			return { stop: false };
@@ -203,11 +223,13 @@ export type transformToCustoComponents<T> = T extends CustoClass
 	? T
 	: T extends React.ComponentType<infer Props>
 	? CustoComponent<Props>
+	: T extends (...args: any[]) => void
+	? T
 	: T extends Record<any, any>
 	? {
 			[key in keyof T]: transformToCustoComponents<T[key]>;
 	  }
-	: never;
+	: T;
 
 const isReactComponent = (e): e is React.ComponentType<any> => {
 	return (

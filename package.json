@@ -17,12 +17,12 @@
   "author": "Temuri Mikava",
   "license": "MIT",
   "dependencies": {
-    "react-flexible-contexts": "^0.0.8",
-    "weakmap-polyfill": "^2.0.2",
+    "react-flexible-contexts": "^0.0.12",
     "react-sanitize-dom-props": "^0.0.1"
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "@types/react": ">=16.8.0"
   },
   "devDependencies": {
     "@types/react": "16.9.41",
