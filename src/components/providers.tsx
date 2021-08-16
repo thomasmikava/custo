@@ -33,7 +33,7 @@ export type CustoProvidersReturnValue<
 	RawValue extends Record<any, any>,
 	Value,
 	LayerData
-> = [CustoTree<RawValue>, Providers<LayerData>] &
+> = (readonly [CustoTree<RawValue>, Providers<LayerData>]) &
 	({
 		Container: StackedContext<
 			CustoProviderRawValue<RawValue, {}>,
@@ -41,7 +41,8 @@ export type CustoProvidersReturnValue<
 			Value,
 			DynamicContext<CustoProviderRawValue<RawValue, {}>, "value", Value>
 		>;
-	} & Providers<LayerData>);
+		Providers: Providers<LayerData>
+	});
 
 export function buildCusto<
 	RawValue extends Record<any, any>,
@@ -148,9 +149,9 @@ export function buildCusto<
 	const arr = [
 		defaultValue ? buildCustoTree(Container as any) : {},
 		Providers,
-	] as CustoProvidersReturnValue<RawValue, Value, LayerData>;
+	] as any as CustoProvidersReturnValue<RawValue, Value, LayerData>;
 	arr.Container = Container;
-	Object.assign(arr, Providers);
+	arr.Providers = Providers;
 
 	return arr;
 }
