@@ -6,26 +6,16 @@ import { useMemo } from "react";
 import { MultiDimentionalWeakMap } from "../utils/weak-map";
 import { custoMergeFlags, CustoMergeFlagEnum, CustoMergeFlag } from "../flags";
 import { ToVeryGeneralCusto } from "../utils/prop-generics";
-import { MinimalComponent } from "react-flexible-contexts/lib/dynamic";
-import { PassableAdditionalMetaProps } from "react-flexible-contexts/lib/stacked";
+import { StackedContextProvider } from "react-flexible-contexts/lib/stacked";
 import { buildCustoTree, CustoTree } from "../classes/helper-fns/tree";
 
+export type CreateValueFn<Value> = <T extends Value>(value: T) => T; 
+
 export interface Providers<LayerData> {
-	PartialMergingProvider: MinimalComponent<
-		{
-			value: LayerData;
-		} & PassableAdditionalMetaProps
-	>;
-	PartialNonPackageMergingProvider: MinimalComponent<
-		{
-			value: LayerData;
-		} & PassableAdditionalMetaProps
-	>;
-	PartialNonMergingProvider: MinimalComponent<
-		{
-			value: LayerData;
-		} & PassableAdditionalMetaProps
-	>;
+	PartialMergingProvider: StackedContextProvider<LayerData>;
+	PartialNonPackageMergingProvider: StackedContextProvider<LayerData>;
+	PartialNonMergingProvider: StackedContextProvider<LayerData>;
+	createPartialValue: (value: LayerData) => LayerData;
 	memoContainer: MultiDimentionalWeakMap<4>;
 }
 
@@ -108,6 +98,8 @@ export function buildCusto<
 		wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined }))
 	); */
 
+	const helperFns = { createValue: <T extends any>(v: T): T => v };
+
 	// merges everything
 	const PartialMergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
@@ -126,7 +118,6 @@ export function buildCusto<
 			mergeDecisionFn,
 		})
 	);
-	(window as any).mergingMemoContainer = memoContainer;
 
 	// does not merge anything
 	const PartialNonMergingProvider = Container.addProvider(
@@ -143,6 +134,7 @@ export function buildCusto<
 		PartialMergingProvider,
 		PartialNonPackageMergingProvider,
 		PartialNonMergingProvider,
+		createPartialValue: <T extends any>(v: T) => v,
 		memoContainer,
 	};
 
