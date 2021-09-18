@@ -24,7 +24,7 @@ export const WrapInCustHookChangeError = <P extends Record<any, any>>(
 			const { __$__ref, ...restProps } = this.props;
 			return (
 				<Component
-					{...this.props}
+					{...restProps as any}
 					key={this.state.key}
 					ref={__$__ref}
 				/>

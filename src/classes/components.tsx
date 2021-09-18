@@ -9,6 +9,7 @@ import {
 import { removeKeys } from "../utils/objects";
 import { unionWith, subtractSet } from "../utils/set";
 import { pickHTMLProps } from "react-sanitize-dom-props";
+import { WrapInCustHookChangeError } from "../components/wrappers";
 
 export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	implements CustoClass {
@@ -31,8 +32,8 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	) => Record<any, any>;
 
 	private name?: string;
-	private wrapInErrorCatcher?: boolean; // TODO: use
-	private wrapInMemo?: boolean; // TODO: use
+	private wrapInErrorCatcher?: boolean;
+	private wrapInMemo?: boolean;
 	private stripPropKeys?: readonly (number | string | symbol)[];
 	private addictiveFlags?: ReadonlySet<CustoMergeFlag>;
 	private subtractiveFlags?: ReadonlySet<CustoMergeFlag>;
@@ -91,7 +92,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		}
 	}
 
-	render(props: Props) {
+	private renderHelper(props: Props) {
 		const {
 			children: initialChildren,
 			...mergedProps
@@ -163,6 +164,27 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		} else {
 			return wrapInComps(children2, ...this.getComponentsArr("outermostWrapper"));
 		}
+	}
+
+	private memoizedRenderer?: (props: Props) => JSX.Element;
+
+	get render(): (props: Props) => JSX.Element {
+		if (this.memoizedRenderer) return this.memoizedRenderer;
+		if (!this.wrapInMemo && !this.wrapInErrorCatcher) {
+			return this.memoizedRenderer = this.renderHelper;
+		}
+
+		let CustoComp: React.ComponentType<Props> = React.forwardRef((props: Props, ref) => {
+			return this.renderHelper({ ...props, ref });
+		}) as any;
+		if (this.wrapInErrorCatcher) {
+			CustoComp = WrapInCustHookChangeError(CustoComp);
+		}
+		if (this.wrapInMemo) {
+			CustoComp = React.memo(CustoComp);
+		}
+
+		return this.memoizedRenderer = (props) => React.createElement(CustoComp, props);
 	}
 
 	mergeClass(
