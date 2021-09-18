@@ -1,4 +1,4 @@
-export function intersectWith<T extends string | number>(
+export function intersectWith<T extends any>(
 	this: Set<T>,
 	set2: Set<T>
 ) {
@@ -8,7 +8,7 @@ export function intersectWith<T extends string | number>(
 	return this;
 }
 
-export function unionWith<T extends string | number>(
+export function unionWith<T extends any>(
 	this: Set<T>,
 	set2: Iterable<T>
 ) {
@@ -18,7 +18,7 @@ export function unionWith<T extends string | number>(
 	return this;
 }
 
-export function subtractSet<T extends string | number>(
+export function subtractSet<T extends any>(
 	this: Set<T>,
 	set2: Iterable<T>
 ) {

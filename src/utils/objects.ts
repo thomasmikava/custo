@@ -307,3 +307,14 @@ export function removeKeys<T, K extends keyof T>(
 	}
 	return obj2;
 }
+
+export function removeUndefinedValues<T>(obj: T): T {
+	const obj2 = { ...obj } as T;
+	const keys = Object.keys(obj);
+	for (const key of keys) {
+		if (obj2[key] === undefined) {
+			delete obj2[key];
+		}
+	}
+	return obj2;
+}

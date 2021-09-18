@@ -6,7 +6,7 @@ import {
 	custoMergeFlags,
 	CustoMergeFlag,
 } from "../flags";
-import { removeKeys } from "../utils/objects";
+import { removeKeys, removeUndefinedValues } from "../utils/objects";
 import { unionWith, subtractSet } from "../utils/set";
 import { pickHTMLProps } from "react-sanitize-dom-props";
 import { WrapInCustHookChangeError } from "../components/wrappers";
@@ -14,7 +14,7 @@ import { WrapInCustHookChangeError } from "../components/wrappers";
 export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	implements CustoClass {
 	public component: React.ComponentType<any> | string | null;
-	private defaultProps: ValueOrFn<Partial<Props>, [Props]>;
+	private defaultProps: (props: Props) => Partial<Props>;
 	readonly $$end$$: true = true;
 	private mergeStrategy?: (
 		currentComponent: CustoComponent<any, Ref>,
@@ -46,20 +46,19 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	}
 
 	/* eslint-disable */
-	private positioningComponents: { [key in ComponentPositions]?: ComponentsOrArray };
+	private positioningComponents: { readonly [key in ComponentPositions]?: ReadonlyArray<ComponentOrCustComponent<{}>> };
 	private transformPropsFn: (inProps: Props) => Record<any, any> = (props) => props;
 	/* eslint-enable */
 
 	private constructor(
 		comp: React.ComponentType<any> | string | null,
 		defaultProps?: ValueOrFn<Partial<Props>, [any]> | null,
-		additionalOptions?: CustoComponentOptions<Props>
+		config?: CustoComponentOptions<Props>
 	) {
 		this.positioningComponents = {};
 		this.component = comp;
-		this.defaultProps = defaultProps || {};
-		additionalOptions = additionalOptions || {};
-		this.applyConfig(additionalOptions, true);
+		this.defaultProps = typeof defaultProps === "function" ? defaultProps : () => (defaultProps || {});
+		this.applyConfig(config || {}, true);
 	}
 
 	private applyConfig = (config: CustoComponentOptions<Props>, calledDuringConstructing?: boolean) => {
@@ -112,12 +111,13 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			finalProps = pickHTMLProps(finalProps, false);
 		}
 
-		let children = Array.isArray(initialChildren)
-			? initialChildren
-			: initialChildren === undefined
-			? []
-			: [initialChildren];
-		// TODO: consider innsermost
+		let children = toArray(initialChildren || []);
+		
+		if (this.positioningComponents.innermostWrapper) {
+			let innerComp = React.createElement(React.Fragment, {}, ...children);
+			innerComp = wrapInComps(innerComp, ...this.getComponentsArr("innermostWrapper"));
+			children = [innerComp];
+		}
 		if (
 			this.positioningComponents.innerStart ||
 			this.positioningComponents.innerEnd
@@ -127,16 +127,15 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				.concat(children)
 				.concat(this.getComponentsArr("innerEnd").map(renderMap));
 		}
-		let inner = children;
 		if (this.positioningComponents.innerWrapper) {
-			let innerComp = React.createElement(React.Fragment, {}, ...inner);
+			let innerComp = React.createElement(React.Fragment, {}, ...children);
 			innerComp = wrapInComps(innerComp, ...this.getComponentsArr("innerWrapper"));
-			inner = [innerComp];
+			children = [innerComp];
 		}
 
 		let mainElement = React.createElement(
 			this.component as any,
-			{ ...finalProps, ref }, // TODO: get ref from finalProps before pickHTMLProps
+			{ ...finalProps, ref },
 			...children
 		);
 		if (this.positioningComponents.outerWrapper) {
@@ -253,11 +252,9 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			) {
 				return this;
 			}
-			const getMergedConfigs = () => {
-				// TODO: what about merging addictive and subtracting flags?
-				// TODO: what about name?
-				return this.getCopiedAdditionalOptions();
-			}
+
+
+			let mergedProps: ValueOrFn<Partial<Props>, [Props]> | undefined = undefined;
 			if (this.propsMergeStrategy) {
 				const propsMergeStrategy = this.propsMergeStrategy;
 				const normalizedPropsMergeStrategy = (
@@ -269,37 +266,29 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 						secondaryComponentProps,
 						mergeFlagsSet
 					);
-				const mergedProps = mergeValueOrFn(
+				mergedProps = mergeValueOrFn(
 					this.defaultProps,
 					cl.defaultProps,
 					normalizedPropsMergeStrategy
-				) as ValueOrFn<Partial<Props>, [Props]>;
-				return new CustoComponent(
-					component,
-					mergedProps,
-					getMergedConfigs()
 				);
-			}
-			if (
+			} else if (
 				typeof component === "string" &&
 				typeof cl.component === "string"
 			) {
-				const mergedProps = mergeValueOrFn(
+				mergedProps = mergeValueOrFn(
 					this.defaultProps,
 					cl.defaultProps,
 					deepMergeHTMLProps
-				) as ValueOrFn<Partial<Props>, [Props]>;
+				);
+			} else if (component !== this.component) {
+				mergedProps = this.defaultProps;
+			}
+			if (mergedProps) {				
+				const config = mergeConfigs(this.cloneConfig(), cl.cloneConfig());
 				return new CustoComponent(
 					component,
 					mergedProps,
-					getMergedConfigs()
-				);
-			}
-			if (component !== this.component) {
-				return new CustoComponent(
-					component,
-					this.defaultProps,
-					getMergedConfigs()
+					config
 				);
 			}
 			return this;
@@ -308,11 +297,8 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		}
 	}
 
-	getMergedProps(props: Props) {
-		const defaultProps =
-			typeof this.defaultProps === "function"
-				? this.defaultProps(props as Props)
-				: this.defaultProps;
+	private getMergedProps(props: Props) {
+		const defaultProps = this.defaultProps(props as Props);
 		if (this.propsToDefaultPropsMergeStrategy) {
 			return this.propsToDefaultPropsMergeStrategy(props, defaultProps);
 		}
@@ -332,42 +318,28 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		index = typeof index === "number" ? index : -1;
 		index = getCirculatedIndex(index, arr.length + 1);
 		arr.splice(index, 0, ...toArray(component));
+		cloned.positioningComponents = {...cloned.positioningComponents, [place]: arr};
 		return cloned;
 	}
 
 	private getComponentsArr(
 		place: ComponentPositions
-	) {
-		const el = this.positioningComponents[place];
-		if (!el) return [];
-		if (!Array.isArray(el)) return [el];
-		return el;
+	): ReadonlyArray<ComponentOrCustComponent<{}>> {
+		return this.positioningComponents[place] || [];
 	}
 
 	clone(): CustoComponent<Props, Ref> {
 		return new CustoComponent(
 			this.component,
 			this.defaultProps,
-			this.getCopiedAdditionalOptions()
+			this.cloneConfig()
 		);
 	}
 
-	private getCopiedPositioningComponents() {
-		const positioningComponents = { ...this.positioningComponents };
-		let hasOne= false;
-		for (const key in positioningComponents) {
-			hasOne = true;
-			const value = positioningComponents[key];
-			if (Array.isArray(value)) positioningComponents[key] = [...value] 
-		}
-		if (!hasOne) return undefined;
-		return positioningComponents;
-	}
-
-	private getCopiedAdditionalOptions(): CustoComponentOptions<any> {
+	private cloneConfig(): CustoComponentOptions<any> {
 		return {
 			name: this.name,
-			components: this.getCopiedPositioningComponents(),
+			components: this.positioningComponents,
 			mergeStrategy: this.mergeStrategy,
 			propsMergeStrategy: this.propsMergeStrategy,
 			transformProps: this.transformPropsFn,
@@ -401,17 +373,27 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		defaultProps?: any,
 		additionalOptions?: any
 	): CustoComponent<any, any> {
-		// if comp is null, then set flag as merging 
-		return new CustoComponent(
+		let component = new CustoComponent(
 			comp,
 			defaultProps,
 			additionalOptions
 		);
+		if (comp === null) {
+			component = component.mergeable();
+		}
+		return component;
 	}
 
 	props<PassedProps extends Partial<Props>>(props: PassedProps | ((props: Props) => PassedProps)): CustoComponent<MarkKeysOptional<Props, keyof PassedProps>, Ref> {
-		// TODO: implement
-		return this as any;
+		const cloned = this.clone();
+		let mergeStrategy = (primary: Partial<Props>, secondary: Partial<Props>) => Object.assign({}, secondary, primary);
+		if (typeof this.component === "string") {
+			mergeStrategy = deepMergeHTMLProps as any;
+		}
+		const primaryProps = typeof props === "function" ? props : () => props;
+		const secondaryProps = cloned.defaultProps;
+		cloned.defaultProps = mergeValueOrFn(primaryProps, secondaryProps, mergeStrategy);
+		return cloned as any;
 	}
 	config(options: CustoComponentOptions<Props>): CustoComponent<Props, Ref> {
 		const cloned = this.clone();
@@ -481,7 +463,7 @@ export interface CustoComponentOptions<
 	OutProps extends Record<any, any> = InProps
 > {
 	name?: string;
-	components?: { [key in ComponentPositions]?: ComponentsOrArray };
+	components?: PositionalComponents;
 	mergeStrategy?: (
 		currentComponent: CustoComponent<any, unknown>,
 		secondaryComponent: CustoComponent<any, unknown>,
@@ -502,7 +484,9 @@ export interface CustoComponentOptions<
 	stripPropKeys?: readonly (number | string | symbol)[];
 }
 
-type ComponentOrCustComponent<Props> = CustoComponent<{}, unknown> | React.ComponentType<Props>;
+export type PositionalComponents<Props = {}> = { [key in ComponentPositions]?: ReadonlyArray<ComponentOrCustComponent<Props>> };
+
+type ComponentOrCustComponent<Props> = CustoComponent<Props, unknown> | React.ComponentType<Props>;
 
 export type ComponentsOrArray =
 	| ReadonlyArray<ComponentOrCustComponent<{}>>
@@ -519,7 +503,7 @@ export const mergeValueOrFn = <
 >(
 	v1: T,
 	v2: T,
-	mergeFn: (first: K, second: K) => K
+	mergeFn: (first: K, second: K) => K = (first, second) => ({ ...first, ...second })
 ): T => {
 	if (typeof v1 !== "function" && typeof v2 !== "function") {
 		return mergeFn(v1 as K, v2 as K);
@@ -549,20 +533,63 @@ const getCirculatedIndex = (index: number, length: number) => {
 	return index;
 };
 
-const renderMap = (e: CustoComponent<any, unknown>, i: number) => {
-	return e.render({ key: i });
+const renderMap = (e: ComponentOrCustComponent<{}>, i: number) => {
+	return render(e, { key: i });
 };
 const wrapInComps = (
 	comp: JSX.Element,
-	...wrappers: CustoComponent<any, unknown>[]
+	...wrappers: ComponentOrCustComponent<{}>[]
 ) => {
 	let result = comp;
 	for (let i = wrappers.length - 1; i >= 0; i--) {
 		const wrapper = wrappers[i];
-		result = wrapper.render({ children: result });
+		result = render(wrapper, ({ children: result }));
 	}
 	return result;
 };
+const render = <Props extends any>(comp: ComponentOrCustComponent<Props>, props: Props) => {
+	if (comp instanceof CustoComponent) {
+		return comp.render(props);
+	}
+	return React.createElement(comp as any, props as any);
+}
 
 type MarkKeysOptional<T, K extends keyof T> = Omit<T, K> &
 	Partial<{ [key in K]: T[K] }>;
+
+
+	
+const mergeConfigs = (primaryConfig: CustoComponentOptions<any, any>, secondaryConfig: CustoComponentOptions<any, any>): CustoComponentOptions<any, any> => {
+	return {
+		...removeUndefinedValues(secondaryConfig),
+		...removeUndefinedValues(primaryConfig),
+		components: mergeComponents(primaryConfig.components, secondaryConfig.components),
+		flags: mergeTwoSets(primaryConfig.flags, secondaryConfig.flags),
+		subtractiveFlags: mergeTwoSets(primaryConfig.subtractiveFlags, secondaryConfig.subtractiveFlags),
+		stripPropKeys: mergeTwoArrays(primaryConfig.stripPropKeys, secondaryConfig.stripPropKeys),
+	};
+}
+const mergeTwoSets = <T extends any>(primary: ReadonlySet<T> | undefined, secondary: ReadonlySet<T> | undefined): Set<T> | undefined => {
+	if (!primary || !secondary) return (primary || secondary) as Set<T> | undefined;
+	return unionWith.call(new Set(primary), secondary) as Set<T>;
+}
+const mergeTwoArrays = <T extends any>(primary: ReadonlyArray<T> | undefined, secondary: ReadonlyArray<T> | undefined): Array<T> | undefined => {
+	if (!primary || !secondary) return (primary || secondary) as T[] | undefined;
+	return [...primary, ...secondary];
+}
+const mergeComponents = (primary: PositionalComponents | undefined, secondary: PositionalComponents | undefined): PositionalComponents | undefined => {
+	if (!primary || !secondary) return (primary || secondary);
+	const allKeys = unionWith.call(new Set(Object.keys(primary)), Object.keys(secondary)) as Set<ComponentPositions>;
+	const newComponents: PositionalComponents = {};
+	for (const key of allKeys) {
+		const value1 = primary[key];
+		const value2 = secondary[key];
+		if (!value1 || !value2) {
+			newComponents[key] = value1 || value2;
+		} else {
+			const primaryShouldGoFirst = key === "outerBefore" || key === "innerStart" || key === "outermostWrapper" || key === "outerWrapper" || key === "innerWrapper" || key === "innermostWrapper";
+			newComponents[key] = primaryShouldGoFirst ? mergeTwoArrays(value1, value2) : mergeTwoArrays(value2, value1);
+		}
+	}
+	return newComponents;
+}
