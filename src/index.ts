@@ -8,9 +8,9 @@ import {
 	UnwrapContainerValueHack,
 	UnwrapDeepOptionalValue,
 } from "./components/providers";
-import { CustoMergeFlagEnum } from "./flags";
+import { CustoComponentFlags } from "./flags";
 import { CustoType } from "./interfaces";
-import { WrapInCustHookChangeError, InjectHook } from "./components/wrappers";
+import { WrapInCustHookChangeError } from "./components/wrappers";
 import { createComponentsTransformation } from "./classes/helper-fns/transformations";
 import { ToVeryGeneralCusto } from "./utils/prop-generics";
 import { DeeplyOptional } from "./utils/generics";
@@ -24,11 +24,10 @@ export {
 	CreateCusto,
 	CustoComponent,
 	createProviderMergingLogic,
-	CustoMergeFlagEnum,
+	CustoComponentFlags,
 	buildCusto,
 	CustoType,
 	WrapInCustHookChangeError,
-	InjectHook,
 	CustoProviderRawValue,
 	transformToCusto,
 	createComponentsTransformation,

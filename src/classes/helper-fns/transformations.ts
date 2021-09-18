@@ -1,12 +1,10 @@
+import React from "react";
+import { CustoComponent, CustoType } from "../..";
+import { CustoClass, NormProps } from "../../interfaces";
+import { isCustoClass } from "../../utils";
 import { deepMapObject } from "../../utils/prop";
 import { CustoHook } from "../hook";
 import { CustoText } from "../texts";
-import { CustoType, CustoComponent } from "../..";
-import { CustoComponentOptions, mergeValueOrFn } from "../components";
-import React from "react";
-import { unionWith } from "../../utils/set";
-import { isCustoClass } from "../../utils";
-import { CustoClass } from "../../interfaces";
 
 const toCustoFnOrHooks = <T>(
 	type: CustoType,
@@ -120,15 +118,14 @@ export type transformToCustoTexts<T> = T extends CustoClass
 ///
 
 export const createComponentsTransformation = (
-	defaultProps: Record<any, any> | (() => Record<any, any>),
-	options: CustoComponentOptions<any, any> = {}
+	transformer: (component: CustoComponent<any, any>) => CustoComponent<any, any> = (x) => x
 ) => {
 	return <T>(obj: T): transformToCustoComponents<T> => {
 		return deepMapObject(obj, val => {
 			if (val instanceof CustoComponent) {
 				return {
 					stop: true,
-					newVal: transformCustoComp(val, defaultProps, options),
+					newVal: transformer(val),
 				};
 			} else if (
 				val instanceof CustoHook &&
@@ -140,11 +137,7 @@ export const createComponentsTransformation = (
 					const transformedData = (transformationFn
 						? transformationFn(data)
 						: data) as CustoComponent<any>;
-					return transformCustoComp(
-						transformedData,
-						defaultProps,
-						options
-					);
+					return transformer(transformedData);
 				};
 				//
 				return {
@@ -160,7 +153,7 @@ export const createComponentsTransformation = (
 			if (isReactComponent(val)) {
 				return {
 					stop: true,
-					newVal: CustoComponent.create(val, defaultProps, options),
+					newVal: transformer((CustoComponent.create as any)(val)),
 				};
 			}
 			if (val === null || typeof val !== "object") {
@@ -174,55 +167,10 @@ export const createComponentsTransformation = (
 	};
 };
 
-export const transformCustoComp = <C extends CustoComponent<any, any>>(
-	comp: C,
-	defaultProps: Record<any, any> | (() => Record<any, any>),
-	options: CustoComponentOptions<any, any>
-): transformToCustoComponents<C> => {
-	const newComp = (comp.clone() as C) as Mutable<C>;
-	(newComp as any).defaultProps = mergeValueOrFn(
-		defaultProps,
-		(newComp as any).defaultProps || {},
-		(v1, v2) => ({
-			...v1,
-			...v2,
-		})
-	);
-	const keys = Object.keys(options);
-	for (let i = 0; i < keys.length; i++) {
-		const key = keys[i];
-		const oldVal = (newComp as any)[key];
-		if (oldVal === undefined) {
-			(newComp as any)[key] = options[key];
-		}
-	}
-	const iterableValueKeys: (keyof CustoComponentOptions<any, any>)[] = [
-		"labels",
-		"stripPropKeys",
-		"additionalMergeFlags",
-		"subtractiveMergeFlags",
-	];
-	for (let i = 0; i < iterableValueKeys.length; i++) {
-		const key = iterableValueKeys[i];
-		if (!options.hasOwnProperty(key)) continue;
-		const oldVal = (newComp as any)[key];
-		if (options[key] === oldVal || !oldVal) continue;
-		(newComp as any)[key] = mergeIterables(options[key], oldVal);
-	}
-	return newComp as any;
-};
-
-const mergeIterables = (a, b) => {
-	if (a instanceof Set || b instanceof Set) {
-		return unionWith.call(new Set(a), b);
-	}
-	return [...a, ...b];
-};
-
 export type transformToCustoComponents<T> = T extends CustoClass
 	? T
-	: T extends React.ComponentType<infer Props>
-	? CustoComponent<Props>
+	: T extends React.ComponentType<infer Props> // TODO: infer ref too
+	? CustoComponent<NormProps<Props>>
 	: T extends (...args: any[]) => void
 	? T
 	: T extends Record<any, any>
@@ -242,7 +190,7 @@ const isReactComponent = (e): e is React.ComponentType<any> => {
 
 export const toCustComponents: <T>(
 	obj: T
-) => transformToCustoComponents<T> = createComponentsTransformation({});
+) => transformToCustoComponents<T> = createComponentsTransformation();
 
 type Mutable<T> = {
 	-readonly [P in keyof T]: T[P];

@@ -3,7 +3,7 @@ import { MultiDimentionalWeakMap } from "./weak-map";
 import { useMemo } from "react";
 import {
 	custoMergeFlags,
-	CustoMergeFlagEnum,
+	CustoComponentFlags,
 	getMemoizedFlags,
 } from "../flags";
 import { CustoHook } from "../classes/hook";
@@ -11,7 +11,7 @@ import { isCustoClass } from ".";
 
 const defaultLintMapContainer = new MultiDimentionalWeakMap(3);
 
-const linkingMergeFlags: custoMergeFlags = [CustoMergeFlagEnum.linking];
+const linkingMergeFlags: custoMergeFlags = [CustoComponentFlags.isLinking];
 
 export type customizationLinkFn = <
 	Obj1 extends Obj2[K],

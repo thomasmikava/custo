@@ -1,9 +1,8 @@
 import React, { HTMLProps } from "react";
-import { CustoClass } from "../interfaces";
+import { CustoClass, NormProps } from "../interfaces";
 import { deepMergeHTMLProps } from "../utils/html";
 import {
-	CustoMergeFlagEnum,
-	CustomizableLabels,
+	CustoComponentFlags,
 	custoMergeFlags,
 	CustoMergeFlag,
 } from "../flags";
@@ -13,44 +12,41 @@ import { pickHTMLProps } from "react-sanitize-dom-props";
 
 export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	implements CustoClass {
-	public readonly component: React.ComponentType<any> | string | null;
-	public fakePropsTransformer: (args: Props) => void;
-	private readonly defaultProps: ValueOrFn<Partial<Props>, [Props]>;
+	public component: React.ComponentType<any> | string | null;
+	private defaultProps: ValueOrFn<Partial<Props>, [Props]>;
 	readonly $$end$$: true = true;
-	private readonly mergeStartegy?: (
+	private mergeStrategy?: (
 		currentComponent: CustoComponent<any, Ref>,
 		secondaryComponent: CustoComponent<any, unknown>,
 		mergeFlags: ReadonlySet<CustoMergeFlag>
 	) => CustoComponent<any, any>;
-	private readonly propsMergeStrategy?: (
+	private propsMergeStrategy?: (
 		currentComponentProps: Record<any, any>,
 		secondaryComponentProps: Record<any, any>,
 		mergeFlags: ReadonlySet<CustoMergeFlag>
 	) => Record<any, any>;
-	private readonly propsToDefaultPropsMergeStrategy?: (
+	private propsToDefaultPropsMergeStrategy?: (
 		props: Record<any, any>,
 		defProps: Record<any, any>
 	) => Record<any, any>;
 
-	private readonly avoidMergingDifferentComponents: boolean;
-	private readonly avoidAnyMerging: boolean;
-	private readonly avoidLinkageMerging: boolean;
-	private readonly labels: Set<CustomizableLabels | string>;
-	private readonly name?: string;
-	private readonly avoidStrippingInvalidDOMProps: boolean;
-	private readonly stripPropKeys?: readonly (number | string | symbol)[];
-	private readonly additionalMergeFlags?: ReadonlySet<CustoMergeFlag>;
-	private readonly subtractiveMergeFlags?: ReadonlySet<CustoMergeFlag>;
+	private name?: string;
+	private wrapInErrorCatcher?: boolean; // TODO: use
+	private wrapInMemo?: boolean; // TODO: use
+	private stripPropKeys?: readonly (number | string | symbol)[];
+	private addictiveFlags?: ReadonlySet<CustoMergeFlag>;
+	private subtractiveFlags?: ReadonlySet<CustoMergeFlag>;
+
+	private hasFlag = (flag: CustoMergeFlag): boolean => {
+		if (!this.addictiveFlags) return false;
+		if (!this.addictiveFlags.has(flag)) return false;
+		if (this.subtractiveFlags && this.subtractiveFlags.has(flag)) return false;
+		return true;
+	}
 
 	/* eslint-disable */
-	private readonly outerBeforeComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly outerAfterComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly outerWrapperComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly outermostWrapperComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly innerStartComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly innerEndComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly innerWrapperComponents: ReadonlyArray<CustoComponent<{}, unknown>> = [];
-	private readonly transformProps: (inProps: Props) => Record<any, any> = (props) => props;
+	private positioningComponents: { [key in ComponentPositions]?: ComponentsOrArray };
+	private transformPropsFn: (inProps: Props) => Record<any, any> = (props) => props;
 	/* eslint-enable */
 
 	private constructor(
@@ -58,61 +54,41 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		defaultProps?: ValueOrFn<Partial<Props>, [any]> | null,
 		additionalOptions?: CustoComponentOptions<Props>
 	) {
+		this.positioningComponents = {};
 		this.component = comp;
 		this.defaultProps = defaultProps || {};
 		additionalOptions = additionalOptions || {};
-		if (additionalOptions.outerBeforeComponents) {
-			this.outerBeforeComponents = toArray(
-				additionalOptions.outerBeforeComponents
-			);
+		this.applyConfig(additionalOptions, true);
+	}
+
+	private applyConfig = (config: CustoComponentOptions<Props>, calledDuringConstructing?: boolean) => {
+		if (config.components) {
+			this.positioningComponents = {...(this.positioningComponents || {}), ...config.components};
 		}
-		if (additionalOptions.outerAfterComponents) {
-			this.outerAfterComponents = toArray(
-				additionalOptions.outerAfterComponents
-			);
+		if (config.transformProps) {
+			this.transformPropsFn = config.transformProps;
 		}
-		if (additionalOptions.outerWrapperComponents) {
-			this.outerWrapperComponents = toArray(
-				additionalOptions.outerWrapperComponents
-			);
+		if (config.name) {
+			this.name = config.name;
 		}
-		if (additionalOptions.outermostWrapperComponents) {
-			this.outermostWrapperComponents = toArray(
-				additionalOptions.outermostWrapperComponents
-			);
+		if (config.mergeStrategy) {
+			this.mergeStrategy = config.mergeStrategy;
 		}
-		if (additionalOptions.innerStartComponents) {
-			this.innerStartComponents = toArray(
-				additionalOptions.innerStartComponents
-			);
+		if (config.propsMergeStrategy) {
+			this.propsMergeStrategy = config.propsMergeStrategy;
 		}
-		if (additionalOptions.innerEndComponents) {
-			this.innerEndComponents = toArray(
-				additionalOptions.innerEndComponents
-			);
+		if (config.propsToDefaultPropsMergeStrategy) {
+			this.propsToDefaultPropsMergeStrategy = config.propsToDefaultPropsMergeStrategy as any;
 		}
-		if (additionalOptions.innerWrapperComponents) {
-			this.innerWrapperComponents = toArray(
-				additionalOptions.innerWrapperComponents
-			);
+		if (config.stripPropKeys) {
+			this.stripPropKeys = config.stripPropKeys;
 		}
-		if (additionalOptions.transformProps) {
-			this.transformProps = additionalOptions.transformProps;
+		if (config.flags) {
+			this.addictiveFlags = config.flags;
 		}
-		this.name = additionalOptions.name;
-		this.mergeStartegy = additionalOptions.mergeStartegy;
-		this.propsMergeStrategy = additionalOptions.propsMergeStrategy;
-		this.propsToDefaultPropsMergeStrategy = additionalOptions.propsToDefaultPropsMergeStrategy as any;
-		this.avoidAnyMerging = !!additionalOptions.avoidAnyMerging;
-		this.avoidLinkageMerging = !!additionalOptions.avoidLinkageMerging;
-		this.avoidMergingDifferentComponents = !!additionalOptions.avoidMergingDifferentComponents;
-		this.labels = additionalOptions.labels
-			? new Set(additionalOptions.labels)
-			: new Set();
-		this.stripPropKeys = additionalOptions.stripPropKeys;
-		this.additionalMergeFlags = additionalOptions.additionalMergeFlags;
-		this.subtractiveMergeFlags = additionalOptions.subtractiveMergeFlags;
-		this.avoidStrippingInvalidDOMProps = !!additionalOptions.avoidStrippingInvalidDOMProps;
+		if (config.subtractiveFlags) {
+			this.subtractiveFlags = config.subtractiveFlags;
+		}
 	}
 
 	render(props: Props) {
@@ -121,15 +97,16 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			...mergedProps
 		} = this.getMergedProps(props);
 		const ref = props.ref;
-		let finalProps = this.transformProps(
+		let finalProps = this.transformPropsFn(
 			removeKeys(
 				mergedProps,
 				...((this.stripPropKeys || []) as never[])
 			) as Props
 		);
+		const isDOMElement = typeof this.component === "string";
 		if (
-			typeof this.component === "string" &&
-			!this.avoidStrippingInvalidDOMProps
+			isDOMElement &&
+			!this.hasFlag(CustoComponentFlags.avoidStrippingInvalidDOMProps)
 		) {
 			finalProps = pickHTMLProps(finalProps, false);
 		}
@@ -139,19 +116,20 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			: initialChildren === undefined
 			? []
 			: [initialChildren];
+		// TODO: consider innsermost
 		if (
-			this.innerStartComponents.length ||
-			this.innerEndComponents.length
+			this.positioningComponents.innerStart ||
+			this.positioningComponents.innerEnd
 		) {
-			children = this.innerStartComponents
+			children = this.getComponentsArr("innerStart")
 				.map(renderMap)
 				.concat(children)
-				.concat(this.innerEndComponents.map(renderMap));
+				.concat(this.getComponentsArr("innerEnd").map(renderMap));
 		}
 		let inner = children;
-		if (this.innerWrapperComponents.length > 0) {
+		if (this.positioningComponents.innerWrapper) {
 			let innerComp = React.createElement(React.Fragment, {}, ...inner);
-			innerComp = wrapInComps(innerComp, ...this.innerWrapperComponents);
+			innerComp = wrapInComps(innerComp, ...this.getComponentsArr("innerWrapper"));
 			inner = [innerComp];
 		}
 
@@ -160,30 +138,30 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 			{ ...finalProps, ref }, // TODO: get ref from finalProps before pickHTMLProps
 			...children
 		);
-		if (this.outerWrapperComponents.length > 0) {
+		if (this.positioningComponents.outerWrapper) {
 			mainElement = wrapInComps(
 				mainElement,
-				...this.outerWrapperComponents
+				...this.getComponentsArr("outerWrapper")
 			) as any;
 		}
 		if (
-			this.outerBeforeComponents.length === 0 &&
-			this.outerAfterComponents.length === 0 &&
-			this.outermostWrapperComponents.length === 0
+			!this.positioningComponents.outerBefore &&
+			!this.positioningComponents.outerAfter &&
+			!this.positioningComponents.outermostWrapper
 		) {
 			return mainElement;
 		}
 		const children2 = React.createElement(
 			React.Fragment,
 			{},
-			this.outerBeforeComponents.map(renderMap),
+			this.getComponentsArr("outerBefore").map(renderMap),
 			mainElement,
-			this.outerAfterComponents.map(renderMap)
+			this.getComponentsArr("outerAfter").map(renderMap)
 		);
-		if (this.outermostWrapperComponents.length === 0) {
+		if (!this.positioningComponents.outermostWrapper) {
 			return children2;
 		} else {
-			return wrapInComps(children2, ...this.outermostWrapperComponents);
+			return wrapInComps(children2, ...this.getComponentsArr("outermostWrapper"));
 		}
 	}
 
@@ -192,63 +170,71 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		mergeFlags?: custoMergeFlags
 	): CustoComponent<Props, Ref> {
 		try {
+			if (!(cl instanceof CustoComponent)) return this;
 			if (cl === this) return this;
 			const mergeFlagsSet: Set<CustoMergeFlag> = mergeFlags
 				? new Set(mergeFlags)
 				: new Set();
-			if (this.additionalMergeFlags) {
-				unionWith.call(mergeFlagsSet, this.additionalMergeFlags);
+			if (this.addictiveFlags) {
+				unionWith.call(mergeFlagsSet, this.addictiveFlags);
 			}
-			if (this.subtractiveMergeFlags) {
-				subtractSet.call(mergeFlagsSet, this.subtractiveMergeFlags);
+			if (cl.addictiveFlags) {
+				unionWith.call(mergeFlagsSet, cl.addictiveFlags);
 			}
-			if (!(cl instanceof CustoComponent)) return this;
-			else if (this.mergeStartegy) {
-				return this.mergeStartegy(this, cl, mergeFlagsSet);
+			if (this.subtractiveFlags) {
+				subtractSet.call(mergeFlagsSet, this.subtractiveFlags);
+			}
+			if (cl.subtractiveFlags) {
+				subtractSet.call(mergeFlagsSet, cl.subtractiveFlags);
+			}
+			else if (this.mergeStrategy) {
+				return this.mergeStrategy(this, cl, mergeFlagsSet);
 			}
 			const component =
 				this.component === null || this.component === undefined
 					? cl.component
 					: this.component;
-			if (this.avoidAnyMerging || cl.avoidAnyMerging) {
+			if (mergeFlagsSet.has(CustoComponentFlags.avoidAnyMerging)) {
 				return this;
 			}
 			if (
 				mergeFlagsSet.has(
-					CustoMergeFlagEnum.avoidWithPackageDefaultValue
+					CustoComponentFlags.avoidWithPackageDefaultValue
 				) &&
-				(this.labels.has(CustomizableLabels.packageDefaultValue) ||
-					cl.labels.has(CustomizableLabels.packageDefaultValue))
+				mergeFlagsSet.has(CustoComponentFlags.isPackageDefaultValue)
 			) {
 				return this;
 			}
 			if (
 				mergeFlagsSet.has(
-					CustoMergeFlagEnum.avoidWithNonPackageValue
+					CustoComponentFlags.avoidWithNonPackageValue
 				) &&
-				(!this.labels.has(CustomizableLabels.packageDefaultValue) ||
-					!cl.labels.has(CustomizableLabels.packageDefaultValue))
+				!mergeFlagsSet.has(CustoComponentFlags.isPackageDefaultValue)
 			) {
 				return this;
 			}
 			if (
-				mergeFlagsSet.has(CustoMergeFlagEnum.linking) &&
-				mergeFlagsSet.has(CustoMergeFlagEnum.avoidLinking)
+				mergeFlagsSet.has(CustoComponentFlags.isLinking) &&
+				mergeFlagsSet.has(CustoComponentFlags.avoidLinking)
 			) {
 				return this;
 			}
 			if (
-				(this.avoidMergingDifferentComponents ||
-					cl.avoidMergingDifferentComponents) &&
+				mergeFlagsSet.has(CustoComponentFlags.avoidMergingDifferentComponents) &&
 				component !== cl.component
 			) {
 				return this;
 			}
 			if (
-				(this.avoidLinkageMerging || cl.avoidLinkageMerging) &&
-				mergeFlagsSet.has(CustoMergeFlagEnum.linking)
+				mergeFlagsSet.has(CustoComponentFlags.avoidLinkageMerging) &&
+				mergeFlagsSet.has(CustoComponentFlags.isLinking)
 			) {
 				return this;
+			}
+			const getMergedConfigs = () => {
+				// TODO: what about merging addictive and subtracting flags?
+				// TODO: what about name?
+				return this.getCopiedAdditionalOptions();
 			}
 			if (this.propsMergeStrategy) {
 				const propsMergeStrategy = this.propsMergeStrategy;
@@ -269,7 +255,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				return new CustoComponent(
 					component,
 					mergedProps,
-					this.getCopiedAdditionalOptions()
+					getMergedConfigs()
 				);
 			}
 			if (
@@ -284,14 +270,14 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 				return new CustoComponent(
 					component,
 					mergedProps,
-					this.getCopiedAdditionalOptions()
+					getMergedConfigs()
 				);
 			}
 			if (component !== this.component) {
 				return new CustoComponent(
 					component,
 					this.defaultProps,
-					this.getCopiedAdditionalOptions()
+					getMergedConfigs()
 				);
 			}
 			return this;
@@ -313,59 +299,27 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 
 	/** Returns new Customized Component and adds new component to it */
 	addComponent(
-		place:
-			| "outerBefore"
-			| "outerAfter"
-			| "outerWrapper"
-			| "outermostWrapper"
-			| "innerStart"
-			| "innerEnd"
-			| "innerWrapper",
+		place: ComponentPositions,
 		/** single or array of customized components */
 		component: ComponentsOrArray,
 		/** circular index */
 		index?: number
 	): CustoComponent<Props, Ref> {
 		const cloned = this.clone();
-		const array = cloned.getComponentsArr(place);
+		const arr = [...cloned.getComponentsArr(place)];
 		index = typeof index === "number" ? index : -1;
-		index = getCirculatedIndex(index, array.length + 1);
-		(array as any).splice(index, 0, ...toArray(component));
+		index = getCirculatedIndex(index, arr.length + 1);
+		arr.splice(index, 0, ...toArray(component));
 		return cloned;
 	}
 
 	private getComponentsArr(
-		place:
-			| "outerBefore"
-			| "outerAfter"
-			| "outerWrapper"
-			| "outermostWrapper"
-			| "innerStart"
-			| "innerEnd"
-			| "innerWrapper"
+		place: ComponentPositions
 	) {
-		if (place === "innerEnd") {
-			return this.innerEndComponents;
-		}
-		if (place === "innerStart") {
-			return this.innerStartComponents;
-		}
-		if (place === "innerWrapper") {
-			return this.innerWrapperComponents;
-		}
-		if (place === "outerAfter") {
-			return this.outerAfterComponents;
-		}
-		if (place === "outerBefore") {
-			return this.outerBeforeComponents;
-		}
-		if (place === "outerWrapper") {
-			return this.outerWrapperComponents;
-		}
-		if (place === "outermostWrapper") {
-			return this.outermostWrapperComponents;
-		}
-		throw new Error("incorrect place " + place);
+		const el = this.positioningComponents[place];
+		if (!el) return [];
+		if (!Array.isArray(el)) return [el];
+		return el;
 	}
 
 	clone(): CustoComponent<Props, Ref> {
@@ -376,28 +330,28 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		);
 	}
 
+	private getCopiedPositioningComponents() {
+		const positioningComponents = { ...this.positioningComponents };
+		let hasOne= false;
+		for (const key in positioningComponents) {
+			hasOne = true;
+			const value = positioningComponents[key];
+			if (Array.isArray(value)) positioningComponents[key] = [...value] 
+		}
+		if (!hasOne) return undefined;
+		return positioningComponents;
+	}
+
 	private getCopiedAdditionalOptions(): CustoComponentOptions<any> {
 		return {
-			outerAfterComponents: [...this.outerAfterComponents],
-			outerBeforeComponents: [...this.outerBeforeComponents],
-			outerWrapperComponents: [...this.outerWrapperComponents],
-			outermostWrapperComponents: [...this.outermostWrapperComponents],
-			innerEndComponents: [...this.innerEndComponents],
-			innerStartComponents: [...this.innerStartComponents],
-			innerWrapperComponents: [...this.innerWrapperComponents],
-			avoidMergingDifferentComponents: this
-				.avoidMergingDifferentComponents,
-			mergeStartegy: this.mergeStartegy,
-			labels: new Set(this.labels),
-			avoidAnyMerging: this.avoidAnyMerging,
-			avoidLinkageMerging: this.avoidLinkageMerging,
-			propsMergeStrategy: this.propsMergeStrategy,
 			name: this.name,
-			transformProps: this.transformProps,
+			components: this.getCopiedPositioningComponents(),
+			mergeStrategy: this.mergeStrategy,
+			propsMergeStrategy: this.propsMergeStrategy,
+			transformProps: this.transformPropsFn,
+			flags: this.addictiveFlags,
+			subtractiveFlags: this.subtractiveFlags,
 			stripPropKeys: this.stripPropKeys,
-			additionalMergeFlags: this.additionalMergeFlags,
-			subtractiveMergeFlags: this.subtractiveMergeFlags,
-			avoidStrippingInvalidDOMProps: this.avoidStrippingInvalidDOMProps,
 		};
 	}
 
@@ -405,68 +359,83 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		comp: string,
 		defaultProps?: ValueOrFn<HTMLProps<any>, [HTMLProps<any>]> | null
 	): CustoComponent<HTMLProps<any>, unknown>;
-	static create<
-		OutProps extends HTMLProps<any>,
-		InProps extends Record<any, any> = OutProps
-	>(
-		comp: string,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
-		additionalOptions?: CustoComponentOptions<Partial<InProps>, OutProps>
-	): CustoComponent<Partial<InProps>, unknown>;
 	static create<Component extends React.ComponentType<any>>(
-		comp: Component,
-		defaultProps?: ValueOrFn<
-			Partial<
-				NormProps<
-					Component extends React.ComponentType<infer R> ? R : never
-				>
-			>,
-			[
-				NormProps<
-					Component extends React.ComponentType<infer R> ? R : never
-				>
-			]
-		> | null
+		comp: Component
 	): CustoComponent<
 		NormProps<Component extends React.ComponentType<infer R> ? R : never>,
 		unknown
 	>;
 	static create<
-		Component extends React.ComponentType<any>,
-		InProps extends Record<any, any>
+		Props extends Record<any, any>,
+		PassedProps extends Partial<Props>
 	>(
-		comp: Component,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
-		additionalOptions?: CustoComponentOptions<
-			InProps,
-			Component extends React.ComponentType<infer R> ? R : never
-		>
-	): CustoComponent<InProps, unknown>;
-	static create<
-		OutProps extends Record<any, any>,
-		InProps extends Record<any, any> = OutProps
-	>(
-		comp: null,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
-		additionalOptions?: CustoComponentOptions<InProps, OutProps>
-	): CustoComponent<InProps, unknown>;
-	static create<
-		OutProps extends Record<any, any>,
-		InProps extends Record<any, any> = OutProps
-	>(
-		comp: React.ComponentType<OutProps> | string | null,
-		defaultProps?: ValueOrFn<Partial<InProps>, [InProps]> | null,
-		additionalOptions?: CustoComponentOptions<InProps, OutProps>
-	): CustoComponent<InProps, unknown> {
-		return new CustoComponent<InProps, unknown>(
+		comp: React.ComponentType<Props>,
+		defaultProps?: ValueOrFn<PassedProps, [PassedProps]> | null,
+	): CustoComponent<MarkKeysOptional<Props, keyof PassedProps>, unknown>;
+	static create<Props = any>(comp: null): CustoComponent<Props, unknown>;
+	static create<Props>(comp: null, defaultProps: Props): CustoComponent<Props, unknown>;
+	static create(
+		comp: React.ComponentType<any> | string | null,
+		defaultProps?: any,
+		additionalOptions?: any
+	): CustoComponent<any, any> {
+		// if comp is null, then set flag as merging 
+		return new CustoComponent(
 			comp,
 			defaultProps,
 			additionalOptions
 		);
 	}
-}
 
-type NormProps<T> = unknown extends T ? {} : T;
+	props<PassedProps extends Partial<Props>>(props: PassedProps | ((props: Props) => PassedProps)): CustoComponent<MarkKeysOptional<Props, keyof PassedProps>, Ref> {
+		// TODO: implement
+		return this as any;
+	}
+	config(options: CustoComponentOptions<Props>): CustoComponent<Props, Ref> {
+		const cloned = this.clone();
+		cloned.applyConfig(options);
+		return cloned;
+	}
+	transformProps<OutProps extends Record<any, any>>(transformer:  (inProps: Props) => OutProps): CustoComponent<OutProps, Ref> {
+		return this.config({ transformProps: transformer as any }) as CustoComponent<OutProps, Ref>;
+	}
+	memo() {
+		const cloned = this.clone();
+		cloned.wrapInMemo = true;
+		return cloned;
+	}
+	catchErrors() {
+		const cloned = this.clone();
+		cloned.wrapInErrorCatcher = true;
+		return cloned;
+	}
+	as: <AsProps, AsRef = Ref>() => CustoComponent<AsProps, AsRef>  = () => {
+		return this as any;
+	}
+	mergeable(mergeable?: boolean) {
+		if (mergeable === undefined || mergeable === true) {
+			return this.subtractFlags(CustoComponentFlags.avoidAnyMerging);
+		} else if (mergeable === false) {
+			return this.addFlags(CustoComponentFlags.avoidAnyMerging);
+		}
+		return this;
+	}
+	
+	addFlags(...flags: CustoMergeFlag[]) {
+		const cloned = this.clone();
+		const addictiveFlags = cloned.addictiveFlags ? new Set(cloned.addictiveFlags) : new Set<CustoMergeFlag>();
+		unionWith.call(addictiveFlags, flags);
+		cloned.addictiveFlags = addictiveFlags;
+		return cloned;
+	}
+	subtractFlags(...flags: CustoMergeFlag[]) {
+		const cloned = this.clone();
+		const subtractiveFlags = cloned.subtractiveFlags ? new Set(cloned.subtractiveFlags) : new Set<CustoMergeFlag>();
+		unionWith.call(subtractiveFlags, flags);
+		cloned.subtractiveFlags = subtractiveFlags;
+		return cloned;
+	}
+}
 
 export type OptionalKeys<T, K extends string | number | symbol> = Omit<T, K> &
 	Partial<{ [key in K & keyof T]: T[key] }>;
@@ -475,19 +444,23 @@ export type ValueOrFn<V, Args extends readonly any[] = []> =
 	| V
 	| ((...args: Args) => V);
 
+
+type ComponentPositions = "outerBefore"
+			| "outerAfter"
+			| "outerWrapper"
+			| "outermostWrapper"
+			| "innerStart"
+			| "innerEnd"
+			| "innerWrapper"
+			| "innermostWrapper"
+
 export interface CustoComponentOptions<
 	InProps extends Record<any, any>,
 	OutProps extends Record<any, any> = InProps
 > {
 	name?: string;
-	outerBeforeComponents?: ComponentsOrArray;
-	outerAfterComponents?: ComponentsOrArray;
-	outerWrapperComponents?: ComponentsOrArray;
-	outermostWrapperComponents?: ComponentsOrArray;
-	innerStartComponents?: ComponentsOrArray;
-	innerEndComponents?: ComponentsOrArray;
-	innerWrapperComponents?: ComponentsOrArray;
-	mergeStartegy?: (
+	components?: { [key in ComponentPositions]?: ComponentsOrArray };
+	mergeStrategy?: (
 		currentComponent: CustoComponent<any, unknown>,
 		secondaryComponent: CustoComponent<any, unknown>,
 		mergeFlags: ReadonlySet<CustoMergeFlag>
@@ -501,20 +474,17 @@ export interface CustoComponentOptions<
 		props: InProps,
 		defProps: Partial<InProps>
 	) => InProps;
-	avoidAnyMerging?: boolean;
-	avoidLinkageMerging?: boolean;
-	avoidMergingDifferentComponents?: boolean;
-	labels?: Iterable<CustomizableLabels | string>;
-	additionalMergeFlags?: ReadonlySet<CustoMergeFlag>;
-	subtractiveMergeFlags?: ReadonlySet<CustoMergeFlag>;
+	flags?: ReadonlySet<CustoMergeFlag>;
+	subtractiveFlags?: ReadonlySet<CustoMergeFlag>;
 	transformProps?: (inProps: InProps) => OutProps;
 	stripPropKeys?: readonly (number | string | symbol)[];
-	avoidStrippingInvalidDOMProps?: boolean;
 }
 
+type ComponentOrCustComponent<Props> = CustoComponent<{}, unknown> | React.ComponentType<Props>;
+
 export type ComponentsOrArray =
-	| ReadonlyArray<CustoComponent<{}, unknown>>
-	| CustoComponent<{}, unknown>;
+	| ReadonlyArray<ComponentOrCustComponent<{}>>
+	| ComponentOrCustComponent<{}>;
 
 const toArray = <T extends any>(el: T): T extends readonly any[] ? T : [T] => {
 	if (Array.isArray(el)) return el as any;
@@ -571,3 +541,6 @@ const wrapInComps = (
 	}
 	return result;
 };
+
+type MarkKeysOptional<T, K extends keyof T> = Omit<T, K> &
+	Partial<{ [key in K]: T[K] }>;

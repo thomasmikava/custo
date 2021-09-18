@@ -1,17 +1,16 @@
-export enum CustomizableLabels {
-	packageDefaultValue = 1,
-}
-export type customizableFlags =
-	| CustomizableLabels
-	| ReadonlySet<CustomizableLabels>;
-
-export enum CustoMergeFlagEnum {
-	linking = 1,
+export enum CustoComponentFlags {
+	isPackageDefaultValue = 1,
+	isLinking = 1,
 	avoidWithPackageDefaultValue = 2,
 	avoidWithNonPackageValue = 3,
 	avoidLinking = 4,
+	avoidAnyMerging = 5,
+	avoidLinkageMerging = 6,
+	avoidMergingDifferentComponents = 7,
+	avoidStrippingInvalidDOMProps = 8,
 }
-export type CustoMergeFlag = CustoMergeFlagEnum | string;
+
+export type CustoMergeFlag = CustoComponentFlags | string;
 export type custoMergeFlags =
 	| ReadonlyArray<CustoMergeFlag>
 	| ReadonlySet<CustoMergeFlag>;

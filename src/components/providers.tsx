@@ -4,26 +4,26 @@ import { mergeCustomizations, MergeDecisionFn } from "../utils/objects";
 import { DeeplyOptional } from "../utils/generics";
 import { useMemo } from "react";
 import { MultiDimentionalWeakMap } from "../utils/weak-map";
-import { custoMergeFlags, CustoMergeFlagEnum, CustoMergeFlag } from "../flags";
+import { custoMergeFlags, CustoComponentFlags, CustoMergeFlag } from "../flags";
 import { ToVeryGeneralCusto } from "../utils/prop-generics";
 import { StackedContextProvider } from "react-flexible-contexts/lib/stacked";
 import { buildCustoTree, CustoTree } from "../classes/helper-fns/tree";
 
 export type CreateValueFn<Value> = <T extends Value>(value: T) => T; 
 
-export interface Providers<LayerData> {
-	PartialMergingProvider: StackedContextProvider<LayerData>;
-	PartialNonPackageMergingProvider: StackedContextProvider<LayerData>;
-	PartialNonMergingProvider: StackedContextProvider<LayerData>;
+export interface CostoContexts<LayerData> {
+	MergingProvider: StackedContextProvider<LayerData>;
+	NonPackageMergingProvider: StackedContextProvider<LayerData>;
+	Provider: StackedContextProvider<LayerData>;
+	NonMergingProvider: StackedContextProvider<LayerData>;
 	createPartialValue: (value: LayerData) => LayerData;
-	memoContainer: MultiDimentionalWeakMap<4>;
 }
 
 export type CustoProvidersReturnValue<
 	RawValue extends Record<any, any>,
 	Value,
 	LayerData
-> = (readonly [CustoTree<RawValue>, Providers<LayerData>]) &
+> = (readonly [CustoTree<RawValue>, CostoContexts<LayerData>]) &
 	({
 		Container: StackedContext<
 			CustoProviderRawValue<RawValue, {}>,
@@ -31,7 +31,8 @@ export type CustoProvidersReturnValue<
 			Value,
 			DynamicContext<CustoProviderRawValue<RawValue, {}>, "value", Value>
 		>;
-		Providers: Providers<LayerData>
+		Contexts: CostoContexts<LayerData>;
+		memoContainer: MultiDimentionalWeakMap<4>;
 	});
 
 export function buildCusto<
@@ -101,7 +102,7 @@ export function buildCusto<
 	const helperFns = { createValue: <T extends any>(v: T): T => v };
 
 	// merges everything
-	const PartialMergingProvider = Container.addProvider(
+	const MergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
@@ -110,7 +111,7 @@ export function buildCusto<
 	);
 
 	// merges everything except default value
-	const PartialNonPackageMergingProvider = Container.addProvider(
+	const NonPackageMergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
@@ -120,7 +121,7 @@ export function buildCusto<
 	);
 
 	// does not merge anything
-	const PartialNonMergingProvider = Container.addProvider(
+	const NonMergingProvider = Container.addProvider(
 		createProviderMergingLogic<LayerData, RawValue>({
 			transformationHook: layerTransformationHook,
 			memoContainer,
@@ -130,20 +131,21 @@ export function buildCusto<
 		})
 	);
 
-	const Providers: Providers<LayerData> = {
-		PartialMergingProvider,
-		PartialNonPackageMergingProvider,
-		PartialNonMergingProvider,
+	const Contexts: CostoContexts<LayerData> = {
+		MergingProvider,
+		NonPackageMergingProvider,
+		NonMergingProvider,
+		Provider: NonMergingProvider,
 		createPartialValue: <T extends any>(v: T) => v,
-		memoContainer,
 	};
 
 	const arr = [
 		defaultValue ? buildCustoTree(Container as any) : {},
-		Providers,
+		Contexts,
 	] as any as CustoProvidersReturnValue<RawValue, Value, LayerData>;
 	arr.Container = Container;
-	arr.Providers = Providers;
+	arr.Contexts = Contexts;
+	arr.memoContainer = memoContainer;
 
 	return arr;
 }
@@ -172,10 +174,10 @@ export const createProviderMergingLogic = <
 	}
 	const mergeFlags: CustoMergeFlag[] = [...(defaultMergingFlags || [])];
 	if (avoidNonPackageCustoMerging) {
-		mergeFlags.push(CustoMergeFlagEnum.avoidWithNonPackageValue);
+		mergeFlags.push(CustoComponentFlags.avoidWithNonPackageValue);
 	}
 	if (avoidPackageCustoMerging) {
-		mergeFlags.push(CustoMergeFlagEnum.avoidWithPackageDefaultValue);
+		mergeFlags.push(CustoComponentFlags.avoidWithPackageDefaultValue);
 	}
 	const getCurrentMetaHook = (
 		customizations: LayerValue,

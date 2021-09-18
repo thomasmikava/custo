@@ -15,3 +15,5 @@ export enum CustoType {
 	hook = "h",
 	text = "t",
 }
+
+export type NormProps<T> = unknown extends T ? any : T;
