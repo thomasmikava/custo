@@ -46,7 +46,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	}
 
 	/* eslint-disable */
-	private positioningComponents: { readonly [key in ComponentPositions]?: ReadonlyArray<ComponentOrCustComponent<{}>> };
+	private positioningComponents: PositionalComponents<Props>;
 	private transformPropsFn: (inProps: Props) => Record<any, any> = (props) => props;
 	/* eslint-enable */
 
@@ -112,24 +112,27 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		}
 
 		let children = toArray(initialChildren || []);
+
 		
 		if (this.positioningComponents.innermostWrapper) {
 			let innerComp = React.createElement(React.Fragment, {}, ...children);
-			innerComp = wrapInComps(innerComp, ...this.getComponentsArr("innermostWrapper"));
+			innerComp = wrapInComps(innerComp, finalProps, ...this.getComponentsArr("innermostWrapper"));
 			children = [innerComp];
 		}
 		if (
 			this.positioningComponents.innerStart ||
 			this.positioningComponents.innerEnd
 		) {
+			const renderMapStart = createRenderMap(finalProps, "__$$custo__st");
+			const renderMapEnd = createRenderMap(finalProps, "__$$custo__en");
 			children = this.getComponentsArr("innerStart")
-				.map(renderMap)
+				.map(renderMapStart)
 				.concat(children)
-				.concat(this.getComponentsArr("innerEnd").map(renderMap));
+				.concat(this.getComponentsArr("innerEnd").map(renderMapEnd));
 		}
 		if (this.positioningComponents.innerWrapper) {
 			let innerComp = React.createElement(React.Fragment, {}, ...children);
-			innerComp = wrapInComps(innerComp, ...this.getComponentsArr("innerWrapper"));
+			innerComp = wrapInComps(innerComp, finalProps, ...this.getComponentsArr("innerWrapper"));
 			children = [innerComp];
 		}
 
@@ -141,6 +144,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		if (this.positioningComponents.outerWrapper) {
 			mainElement = wrapInComps(
 				mainElement,
+				finalProps,
 				...this.getComponentsArr("outerWrapper")
 			) as any;
 		}
@@ -151,17 +155,19 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 		) {
 			return mainElement;
 		}
+		const renderMapBefore = createRenderMap(finalProps, "__$$custo__bf");
+		const renderMapAfter = createRenderMap(finalProps, "__$$custo__af");
 		const children2 = React.createElement(
 			React.Fragment,
 			{},
-			this.getComponentsArr("outerBefore").map(renderMap),
+			this.getComponentsArr("outerBefore").map(renderMapBefore),
 			mainElement,
-			this.getComponentsArr("outerAfter").map(renderMap)
+			this.getComponentsArr("outerAfter").map(renderMapAfter)
 		);
 		if (!this.positioningComponents.outermostWrapper) {
 			return children2;
 		} else {
-			return wrapInComps(children2, ...this.getComponentsArr("outermostWrapper"));
+			return wrapInComps(children2, finalProps, ...this.getComponentsArr("outermostWrapper"));
 		}
 	}
 
@@ -309,7 +315,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 	addComponent(
 		place: ComponentPositions,
 		/** single or array of customized components */
-		component: ComponentsOrArray,
+		component: ComponentsOrArray<Props>,
 		/** circular index */
 		index?: number
 	): CustoComponent<Props, Ref> {
@@ -324,7 +330,7 @@ export class CustoComponent<Props extends Record<any, any>, Ref = unknown>
 
 	private getComponentsArr(
 		place: ComponentPositions
-	): ReadonlyArray<ComponentOrCustComponent<{}>> {
+	): ReadonlyArray<ComponentOrCustComponent<Props>> {
 		return this.positioningComponents[place] || [];
 	}
 
@@ -463,7 +469,7 @@ export interface CustoComponentOptions<
 	OutProps extends Record<any, any> = InProps
 > {
 	name?: string;
-	components?: PositionalComponents;
+	components?: PositionalComponents<OutProps>;
 	mergeStrategy?: (
 		currentComponent: CustoComponent<any, unknown>,
 		secondaryComponent: CustoComponent<any, unknown>,
@@ -488,9 +494,9 @@ export type PositionalComponents<Props = {}> = { [key in ComponentPositions]?: R
 
 type ComponentOrCustComponent<Props> = CustoComponent<Props, unknown> | React.ComponentType<Props>;
 
-export type ComponentsOrArray =
-	| ReadonlyArray<ComponentOrCustComponent<{}>>
-	| ComponentOrCustComponent<{}>;
+export type ComponentsOrArray<Props = {}> =
+	| ReadonlyArray<ComponentOrCustComponent<Props>>
+	| ComponentOrCustComponent<Props>;
 
 const toArray = <T extends any>(el: T): T extends readonly any[] ? T : [T] => {
 	if (Array.isArray(el)) return el as any;
@@ -533,17 +539,20 @@ const getCirculatedIndex = (index: number, length: number) => {
 	return index;
 };
 
-const renderMap = (e: ComponentOrCustComponent<{}>, i: number) => {
-	return render(e, { key: i });
-};
-const wrapInComps = (
+const createRenderMap = <Props extends Record<any, any>>(props: Props, prefix: string) => {
+	return (e: ComponentOrCustComponent<Props>, i: number) => {
+		return render(e, { ...props, key: prefix + i });
+	};
+}
+const wrapInComps = <Props  extends Record<any, any>>(
 	comp: JSX.Element,
-	...wrappers: ComponentOrCustComponent<{}>[]
+	props: Props,
+	...wrappers: ComponentOrCustComponent<Props>[]
 ) => {
 	let result = comp;
 	for (let i = wrappers.length - 1; i >= 0; i--) {
 		const wrapper = wrappers[i];
-		result = render(wrapper, ({ children: result }));
+		result = render(wrapper, ({ ...props, children: result }));
 	}
 	return result;
 };

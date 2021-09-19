@@ -16,7 +16,7 @@ export interface CostoContexts<LayerData> {
 	NonPackageMergingProvider: StackedContextProvider<LayerData>;
 	Provider: StackedContextProvider<LayerData>;
 	NonMergingProvider: StackedContextProvider<LayerData>;
-	createPartialValue: (value: LayerData) => LayerData;
+	createValue: (value: LayerData) => LayerData;
 }
 
 export type CustoProvidersReturnValue<
@@ -136,7 +136,7 @@ export function buildCusto<
 		NonPackageMergingProvider,
 		NonMergingProvider,
 		Provider: NonMergingProvider,
-		createPartialValue: <T extends any>(v: T) => v,
+		createValue: <T extends any>(v: T) => v,
 	};
 
 	const arr = [

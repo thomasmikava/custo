@@ -1,3 +1,5 @@
 # Custo
 
-Customize react components
+Custo helps you to create customizable components easily.
+
+TODO: add examples
