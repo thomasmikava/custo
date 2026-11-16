@@ -3,13 +3,14 @@ import { execFileSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const publicExports = [
   "CreateCusto",
@@ -45,6 +46,17 @@ function runNode(format: "commonjs" | "module", code: string) {
 }
 
 describe("package entry points", () => {
+  it("loads the DOM prop sanitizer as a runtime dependency in both builds", () => {
+    const { dependencies } = JSON.parse(readFileSync("package.json", "utf8"));
+    expect(dependencies["react-sanitize-dom-props"]).toBeDefined();
+    expect(readFileSync("lib/index.js", "utf8")).toMatch(
+      /\brequire\(["']react-sanitize-dom-props["']\)/
+    );
+    expect(readFileSync("lib/index.mjs", "utf8")).toMatch(
+      /\bfrom ["']react-sanitize-dom-props["']/
+    );
+  });
+
   it("supports the public CommonJS API with Node require", () => {
     runNode(
       "commonjs",

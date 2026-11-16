@@ -1,6 +1,6 @@
 {
   "name": "custo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "",
   "type": "commonjs",
   "main": "lib/index.js",
@@ -37,6 +37,9 @@
   "keywords": [],
   "author": "Temuri Mikava",
   "license": "MIT",
+  "dependencies": {
+    "react-sanitize-dom-props": "^0.0.1"
+  },
   "peerDependencies": {
     "@types/react": ">=16.8.0",
     "react": ">=16.8.0"
@@ -49,7 +52,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-flexible-contexts": "^0.0.15",
-    "react-sanitize-dom-props": "^0.0.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"

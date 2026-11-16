@@ -12,7 +12,8 @@ export default defineConfig({
       fileName: (format) => (format === "es" ? "index.mjs" : "index.js"),
     },
     rolldownOptions: {
-      external: [/^react(?:\/|$)/],
+      // react-flexible-contexts 0.0.15 has extensionless ESM imports that fail in Node.
+      external: [/^react(?:\/|$)/, "react-sanitize-dom-props"],
     },
   },
   plugins: [
