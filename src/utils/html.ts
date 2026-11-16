@@ -1,38 +1,34 @@
-import { HTMLProps } from "react";
+import type { HTMLProps } from "react";
+import { setOwnProperty } from "./prop";
 
 export const deepMergeHTMLProps = (
-	mainProps: React.HTMLProps<any>,
-	secondaryProps: React.HTMLProps<any>
-): React.HTMLProps<any> => {
-	const newProps = { ...mainProps };
-	for (const key in secondaryProps) {
-		const secondaryVal = secondaryProps[key];
-		if (!newProps[key]) {
-			newProps[key] = secondaryVal;
-			continue;
-		}
-		if (key === "className") {
-			newProps[key] += " " + secondaryVal;
-			continue;
-		}
-		if (key === "style") {
-			newProps[key] = {
-				...secondaryVal,
-				...newProps[key],
-			};
-		}
-		if (
-			typeof newProps[key] === "function" &&
-			typeof secondaryVal === "function"
-		) {
-			// function
-			const fn1 = newProps[key];
-			const fn2 = secondaryVal;
-			newProps[key] = (...args: any) => {
-				fn1(...args);
-				fn2(...args);
-			};
-		}
-	}
-	return newProps;
+  mainProps: HTMLProps<any>,
+  secondaryProps: HTMLProps<any>
+): HTMLProps<any> => {
+  const newProps = { ...mainProps };
+  for (const key of Object.keys(secondaryProps)) {
+    const mainVal = Object.getOwnPropertyDescriptor(newProps, key)?.value;
+    const secondaryVal = secondaryProps[key];
+    if (mainVal === undefined) {
+      setOwnProperty(newProps, key, secondaryVal);
+      continue;
+    }
+    if (key === "className" && mainVal && secondaryVal) {
+      newProps[key] = `${mainVal} ${secondaryVal}`;
+      continue;
+    }
+    if (key === "style" && mainVal != null && secondaryVal != null) {
+      newProps[key] = {
+        ...secondaryVal,
+        ...mainVal,
+      };
+    }
+    if (typeof mainVal === "function" && typeof secondaryVal === "function") {
+      newProps[key] = (...args: any) => {
+        mainVal(...args);
+        secondaryVal(...args);
+      };
+    }
+  }
+  return newProps;
 };

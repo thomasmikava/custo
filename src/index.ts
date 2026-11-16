@@ -1,39 +1,41 @@
-import { CreateCusto, transformToCusto } from "./create";
-import { CustoComponent } from "./classes/components";
 import {
-	createProviderMergingLogic,
-	buildCusto,
-	CustoProviderRawValue,
-	UnwrapContainerValue,
-	UnwrapContainerValueHack,
-	UnwrapDeepOptionalValue,
+  CustoComponent,
+  type CustoComponentOptions,
+} from "./classes/components";
+import { createComponentsTransformation } from "./classes/helper-fns/transformations";
+import type { CustoTree } from "./classes/helper-fns/tree";
+import {
+  buildCusto,
+  type CustoProviderRawValue,
+  createProviderMergingLogic,
+  type UnwrapContainerValue,
+  type UnwrapContainerValueHack,
 } from "./components/providers";
+import { WrapInCustHookChangeError } from "./components/wrappers";
+import { CreateCusto, transformToCusto } from "./create";
 import { CustoComponentFlags } from "./flags";
 import { CustoType } from "./interfaces";
-import { WrapInCustHookChangeError } from "./components/wrappers";
-import { createComponentsTransformation } from "./classes/helper-fns/transformations";
-import { ToVeryGeneralCusto } from "./utils/prop-generics";
-import { DeeplyOptional } from "./utils/generics";
+import type { DeeplyOptional } from "./utils/generics";
+import type { ToVeryGeneralCusto } from "./utils/prop-generics";
 
 type DeeplyOptionalCustoProviderValue<T> = ToVeryGeneralCusto<
-	DeeplyOptional<UnwrapContainerValueHack<T>>
+  DeeplyOptional<UnwrapContainerValueHack<T>>
 >;
 type CustoProviderValue<T> = UnwrapContainerValue<T>;
 
 export {
-	CreateCusto,
-	CustoComponent,
-	createProviderMergingLogic,
-	CustoComponentFlags,
-	buildCusto,
-	CustoType,
-	WrapInCustHookChangeError,
-	CustoProviderRawValue,
-	transformToCusto,
-	createComponentsTransformation,
-	UnwrapContainerValue,
-	CustoProviderValue,
-	DeeplyOptionalCustoProviderValue,
-	UnwrapDeepOptionalValue,
-	ToVeryGeneralCusto,
+  buildCusto,
+  CreateCusto,
+  CustoComponent,
+  CustoComponentFlags,
+  type CustoComponentOptions,
+  type CustoProviderRawValue,
+  type CustoProviderValue,
+  type CustoTree,
+  CustoType,
+  createComponentsTransformation,
+  createProviderMergingLogic,
+  type DeeplyOptionalCustoProviderValue,
+  transformToCusto,
+  WrapInCustHookChangeError,
 };

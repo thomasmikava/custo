@@ -1,13 +1,34 @@
 {
   "name": "custo",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "",
+  "type": "commonjs",
   "main": "lib/index.js",
+  "module": "lib/index.mjs",
   "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/index.d.mts",
+        "node": "./lib/index.node.mjs",
+        "default": "./lib/index.mjs"
+      },
+      "require": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      },
+      "default": "./lib/index.mjs"
+    }
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "prepare": "npm run build"
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "check": "biome check .",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "prepack": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -16,31 +37,22 @@
   "keywords": [],
   "author": "Temuri Mikava",
   "license": "MIT",
-  "dependencies": {
-    "react-flexible-contexts": "^0.0.15",
-    "react-sanitize-dom-props": "^0.0.1"
-  },
   "peerDependencies": {
-    "react": ">=16.8.0",
-    "@types/react": ">=16.8.0"
+    "@types/react": ">=16.8.0",
+    "react": ">=16.8.0"
   },
   "devDependencies": {
-    "@types/react": "16.9.41",
-    "@typescript-eslint/eslint-plugin": "^2.17.0",
-    "@typescript-eslint/parser": "^2.17.0",
-    "eslint": "^6.8.0",
-    "eslint-config-prettier": "^6.9.0",
-    "eslint-plugin-import": "^2.20.0",
-    "eslint-plugin-jsx-a11y": "^6.2.3",
-    "eslint-plugin-prettier": "^3.1.2",
-    "eslint-plugin-react": "^7.18.0",
-    "eslint-plugin-react-hooks": "^2.3.0",
-    "prettier": "^1.19.1",
-    "react": "^16.12.0",
-    "typescript": "^3.7.5"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
+    "@biomejs/biome": "2.6.8",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "happy-dom": "^21.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-flexible-contexts": "^0.0.15",
+    "react-sanitize-dom-props": "^0.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "publishConfig": {
     "access": "public"

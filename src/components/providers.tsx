@@ -1,293 +1,226 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-import { DynamicContext, StackedContext } from "react-flexible-contexts";
-import { mergeCustomizations, MergeDecisionFn } from "../utils/objects";
-import { DeeplyOptional } from "../utils/generics";
 import { useMemo } from "react";
+import { StackedContext } from "react-flexible-contexts";
+import { buildCustoTree, type CustoTree } from "../classes/helper-fns/tree";
+import {
+  CustoComponentFlags,
+  type CustoMergeFlag,
+  type custoMergeFlags,
+} from "../flags";
+import type { DeeplyOptional } from "../utils/generics";
+import { type MergeDecisionFn, mergeCustomizations } from "../utils/objects";
+import type { ToVeryGeneralCusto } from "../utils/prop-generics";
 import { MultiDimentionalWeakMap } from "../utils/weak-map";
-import { custoMergeFlags, CustoComponentFlags, CustoMergeFlag } from "../flags";
-import { ToVeryGeneralCusto } from "../utils/prop-generics";
-import { StackedContextProvider } from "react-flexible-contexts/lib/stacked";
-import { buildCustoTree, CustoTree } from "../classes/helper-fns/tree";
-
-export type CreateValueFn<Value> = <T extends Value>(value: T) => T; 
+import type { CustoContainer, CustoProvider } from "./context-types";
 
 export interface CostoContexts<LayerData> {
-	MergingProvider: StackedContextProvider<LayerData>;
-	NonPackageMergingProvider: StackedContextProvider<LayerData>;
-	Provider: StackedContextProvider<LayerData>;
-	NonMergingProvider: StackedContextProvider<LayerData>;
-	createValue: (value: LayerData) => LayerData;
+  MergingProvider: CustoProvider<LayerData>;
+  NonPackageMergingProvider: CustoProvider<LayerData>;
+  Provider: CustoProvider<LayerData>;
+  NonMergingProvider: CustoProvider<LayerData>;
+  createValue: (value: LayerData) => LayerData;
 }
 
 export type CustoProvidersReturnValue<
-	RawValue extends Record<any, any>,
-	Value,
-	LayerData
-> = (readonly [CustoTree<RawValue>, CostoContexts<LayerData>]) &
-	({
-		Container: StackedContext<
-			CustoProviderRawValue<RawValue, {}>,
-			"value",
-			Value,
-			DynamicContext<CustoProviderRawValue<RawValue, {}>, "value", Value>
-		>;
-		Contexts: CostoContexts<LayerData>;
-		memoContainer: MultiDimentionalWeakMap<4>;
-	});
+  RawValue extends Record<any, any>,
+  Value,
+  LayerData,
+> = readonly [CustoTree<RawValue>, CostoContexts<LayerData>] & {
+  Container: CustoContainer<CustoProviderRawValue<RawValue>, Value>;
+  Contexts: CostoContexts<LayerData>;
+};
 
 export function buildCusto<
-	RawValue extends Record<any, any>,
-	Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, RawValue>,
-	LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>
+  RawValue extends Record<any, any>,
+  Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, RawValue>,
+  LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>,
 >({
-	defaultValue,
-	defaultMergeFlags,
-	layerTransformationHook,
-	contextDisplayName,
-	rawToFinalValueHook,
-	mergeDecisionFn,
+  defaultValue,
+  defaultMergeFlags,
+  layerTransformationHook,
+  contextDisplayName,
+  rawToFinalValueHook,
+  mergeDecisionFn,
 }: {
-	layerTransformationHook?: ((arg: LayerData) => RawValue) | undefined;
-	rawToFinalValueHook?:
-		| ((data: CustoProviderRawValue<RawValue, {}>) => Value)
-		| undefined;
-	contextDisplayName?: string | undefined;
-	mergeDecisionFn?: MergeDecisionFn | undefined;
-	defaultValue: RawValue | undefined;
-	defaultMergeFlags?: custoMergeFlags | null | undefined;
+  layerTransformationHook?: ((arg: LayerData) => RawValue) | undefined;
+  rawToFinalValueHook?:
+    | ((data: CustoProviderRawValue<RawValue, {}>) => Value)
+    | undefined;
+  contextDisplayName?: string | undefined;
+  mergeDecisionFn?: MergeDecisionFn | undefined;
+  defaultValue: RawValue | undefined;
+  defaultMergeFlags?: custoMergeFlags | null | undefined;
 }): CustoProvidersReturnValue<RawValue, Value, LayerData>;
 
 export function buildCusto<
-	RawValue extends Record<any, any>,
-	Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, RawValue>,
-	LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>
+  RawValue extends Record<any, any>,
+  Value = CustoProviderRawValue<ToVeryGeneralCusto<RawValue>, RawValue>,
+  LayerData = ToVeryGeneralCusto<DeeplyOptional<RawValue>>,
 >({
-	defaultValue,
-	defaultMergeFlags,
-	layerTransformationHook = (x => x) as any,
-	contextDisplayName,
-	rawToFinalValueHook,
-	mergeDecisionFn,
+  defaultValue,
+  defaultMergeFlags,
+  layerTransformationHook = ((x) => x) as any,
+  contextDisplayName,
+  rawToFinalValueHook,
+  mergeDecisionFn,
 }: {
-	layerTransformationHook?: (arg: LayerData) => RawValue;
-	rawToFinalValueHook?: (data: CustoProviderRawValue<RawValue>) => Value;
-	contextDisplayName?: string;
-	mergeDecisionFn?: MergeDecisionFn;
-	defaultValue: RawValue | undefined;
-	defaultMergeFlags?: custoMergeFlags | null;
+  layerTransformationHook?: (arg: LayerData) => RawValue;
+  rawToFinalValueHook?: (data: CustoProviderRawValue<RawValue>) => Value;
+  contextDisplayName?: string;
+  mergeDecisionFn?: MergeDecisionFn;
+  defaultValue: RawValue | undefined;
+  defaultMergeFlags?: custoMergeFlags | null;
 }): CustoProvidersReturnValue<RawValue, Value, LayerData> {
-	const memoContainer = new MultiDimentionalWeakMap(4);
+  const memoContainer = new MultiDimentionalWeakMap(5);
 
-	const contextDrfaultValue: CustoProviderRawValue<RawValue> | undefined =
-		defaultValue === undefined
-			? undefined
-			: {
-					mergeFlags: defaultMergeFlags ?? [],
-					value: defaultValue,
-			  };
+  const contextDefaultValue: CustoProviderRawValue<RawValue> | undefined =
+    defaultValue === undefined
+      ? undefined
+      : {
+          mergeFlags: defaultMergeFlags ?? [],
+          value: defaultValue,
+        };
 
-	const Container = StackedContext.create(contextDrfaultValue!, "value", {
-		rawToFinalValueHook,
-	});
-	if (contextDisplayName) {
-		Container.context.setContextName(contextDisplayName);
-	}
+  const Container = StackedContext.create<
+    CustoProviderRawValue<RawValue>,
+    Value
+  >(contextDefaultValue, "value", { rawToFinalValueHook });
+  if (contextDisplayName) {
+    Container.context.setContextName(contextDisplayName);
+  }
 
-	/* const FullValueProvider = Container.context.Provider;
+  // merges everything
+  const MergingProvider = Container.addProvider(
+    createMergingLogic<LayerData, RawValue>(
+      { transformationHook: layerTransformationHook, mergeDecisionFn },
+      memoContainer,
+      defaultValue
+    )
+  );
 
-	const FullNonMergingProvider = Container.addProvider<LayerData>(
-		wrapInMeta(layerTransformationHook, () => ({ mergeFlags: undefined }))
-	); */
+  // merges everything except default value
+  const NonPackageMergingProvider = Container.addProvider(
+    createMergingLogic<LayerData, RawValue>(
+      {
+        transformationHook: layerTransformationHook,
+        avoidPackageCustoMerging: true,
+        mergeDecisionFn,
+      },
+      memoContainer,
+      defaultValue
+    )
+  );
 
-	const helperFns = { createValue: <T extends any>(v: T): T => v };
+  // does not merge anything
+  const NonMergingProvider = Container.addProvider(
+    createMergingLogic<LayerData, RawValue>(
+      {
+        transformationHook: layerTransformationHook,
+        avoidNonPackageCustoMerging: true,
+        avoidPackageCustoMerging: true,
+        mergeDecisionFn,
+      },
+      memoContainer,
+      defaultValue
+    )
+  );
 
-	// merges everything
-	const MergingProvider = Container.addProvider(
-		createProviderMergingLogic<LayerData, RawValue>({
-			transformationHook: layerTransformationHook,
-			memoContainer,
-			mergeDecisionFn,
-		})
-	);
+  const Contexts: CostoContexts<LayerData> = {
+    MergingProvider,
+    NonPackageMergingProvider,
+    NonMergingProvider,
+    Provider: NonMergingProvider,
+    createValue: <T extends any>(v: T) => v,
+  };
 
-	// merges everything except default value
-	const NonPackageMergingProvider = Container.addProvider(
-		createProviderMergingLogic<LayerData, RawValue>({
-			transformationHook: layerTransformationHook,
-			memoContainer,
-			avoidPackageCustoMerging: true,
-			mergeDecisionFn,
-		})
-	);
+  const arr = [
+    defaultValue ? buildCustoTree(Container as any) : {},
+    Contexts,
+  ] as any as CustoProvidersReturnValue<RawValue, Value, LayerData>;
+  arr.Container = Container;
+  arr.Contexts = Contexts;
 
-	// does not merge anything
-	const NonMergingProvider = Container.addProvider(
-		createProviderMergingLogic<LayerData, RawValue>({
-			transformationHook: layerTransformationHook,
-			memoContainer,
-			avoidNonPackageCustoMerging: true,
-			avoidPackageCustoMerging: true,
-			mergeDecisionFn,
-		})
-	);
+  return arr;
+}
 
-	const Contexts: CostoContexts<LayerData> = {
-		MergingProvider,
-		NonPackageMergingProvider,
-		NonMergingProvider,
-		Provider: NonMergingProvider,
-		createValue: <T extends any>(v: T) => v,
-	};
-
-	const arr = [
-		defaultValue ? buildCustoTree(Container as any) : {},
-		Contexts,
-	] as any as CustoProvidersReturnValue<RawValue, Value, LayerData>;
-	arr.Container = Container;
-	arr.Contexts = Contexts;
-	arr.memoContainer = memoContainer;
-
-	return arr;
+interface ProviderMergingOptions<LayerValue, FinalValue> {
+  transformationHook?: (arg: LayerValue) => FinalValue;
+  avoidNonPackageCustoMerging?: boolean;
+  avoidPackageCustoMerging?: boolean;
+  mergeFlags?: custoMergeFlags;
+  mergeDecisionFn?: MergeDecisionFn;
 }
 
 export const createProviderMergingLogic = <
-	LayerValue extends Record<any, any>,
-	FinalValue = LayerValue
->({
-	transformationHook = x => x as FinalValue,
-	memoContainer = new MultiDimentionalWeakMap(4),
-	avoidNonPackageCustoMerging,
-	avoidPackageCustoMerging,
-	mergeFlags: defaultMergingFlags,
-	mergeDecisionFn,
-}: {
-	transformationHook?: (arg: LayerValue) => FinalValue;
-	memoContainer?: MultiDimentionalWeakMap<4>;
-	avoidNonPackageCustoMerging?: boolean;
-	avoidPackageCustoMerging?: boolean;
-	mergeFlags?: custoMergeFlags;
-	mergeDecisionFn?: MergeDecisionFn;
-}) => {
-	let avoidCustomizationsMerging = false;
-	if (avoidNonPackageCustoMerging && avoidPackageCustoMerging) {
-		avoidCustomizationsMerging = true;
-	}
-	const mergeFlags: CustoMergeFlag[] = [...(defaultMergingFlags || [])];
-	if (avoidNonPackageCustoMerging) {
-		mergeFlags.push(CustoComponentFlags.avoidWithNonPackageValue);
-	}
-	if (avoidPackageCustoMerging) {
-		mergeFlags.push(CustoComponentFlags.avoidWithPackageDefaultValue);
-	}
-	const getCurrentMetaHook = (
-		customizations: LayerValue,
-		prevMeta: any
-	): Omit<CustoProviderRawValue<any>, "value"> => {
-		return { mergeFlags };
-	};
+  LayerValue,
+  FinalValue extends Record<any, any> = Extract<LayerValue, Record<any, any>>,
+>(
+  options: ProviderMergingOptions<LayerValue, FinalValue>
+) => createMergingLogic(options, new MultiDimentionalWeakMap(5));
 
-	const fn = (
-		customizations: LayerValue,
-		prevVal: FinalValue,
-		mergedMeta: Omit<CustoProviderRawValue<any>, "value">
-	): FinalValue => {
-		const transformed = transformationHook(customizations);
-		const mergeFlags = mergedMeta.mergeFlags;
-		const b = useMemo(() => {
-			return mergeCustomizations({
-				object1: transformed,
-				object2: prevVal,
-				memoContainer,
-				mergeStrategy: "overrideLeftToRight",
-				avoidCustomizationsMerging,
-				mergeFlags,
-				decisionFn: mergeDecisionFn,
-			});
-		}, [transformed, prevVal]);
-		return b;
-	};
-	return wrapInMeta(fn, getCurrentMetaHook);
-};
+function createMergingLogic<LayerValue, FinalValue extends Record<any, any>>(
+  {
+    transformationHook = (x) => x as unknown as FinalValue,
+    avoidNonPackageCustoMerging,
+    avoidPackageCustoMerging,
+    mergeFlags: defaultMergingFlags,
+    mergeDecisionFn,
+  }: ProviderMergingOptions<LayerValue, FinalValue>,
+  memoContainer: MultiDimentionalWeakMap<5>,
+  schema?: FinalValue
+) {
+  const avoidCustomizationsMerging = Boolean(
+    avoidNonPackageCustoMerging && avoidPackageCustoMerging
+  );
+  const localFlags: CustoMergeFlag[] = [...(defaultMergingFlags ?? [])];
+  if (avoidNonPackageCustoMerging) {
+    localFlags.push(CustoComponentFlags.avoidWithNonPackageValue);
+  }
+  if (avoidPackageCustoMerging) {
+    localFlags.push(CustoComponentFlags.avoidWithPackageDefaultValue);
+  }
+
+  return (
+    customizations: LayerValue,
+    {
+      value: inherited,
+      mergeFlags: inheritedFlags,
+    }: CustoProviderRawValue<FinalValue>
+  ): CustoProviderRawValue<FinalValue> => {
+    const mergeFlags = useMemo(
+      () => new Set([...localFlags, ...(inheritedFlags ?? [])]),
+      [inheritedFlags]
+    );
+    const transformed = transformationHook(customizations);
+    const value = useMemo(
+      () =>
+        mergeCustomizations({
+          object1: transformed,
+          object2: inherited,
+          memoContainer,
+          mergeStrategy: "overrideLeftToRight",
+          avoidCustomizationsMerging,
+          mergeFlags,
+          decisionFn: mergeDecisionFn,
+          schema,
+        }),
+      [transformed, inherited, mergeFlags]
+    );
+    return useMemo(() => ({ value, mergeFlags }), [value, mergeFlags]);
+  };
+}
 
 export interface CustoProviderRawValue<V, hackProp = {}> {
-	value: V;
-	mergeFlags?: custoMergeFlags;
-	hackProp?: hackProp;
+  value: V;
+  mergeFlags?: custoMergeFlags;
+  hackProp?: hackProp;
 }
-export type UnwrapCustoProviderRawValue<
-	T extends any
-> = T extends CustoProviderRawValue<infer V> ? V : never;
-export type UnwrapContainerValue<T extends any> = T extends StackedContext<
-	any,
-	"value",
-	CustoProviderRawValue<infer Obj, any>,
-	any
->
-	? Obj
-	: never;
-export type UnwrapContainerValueHack<T extends any> = T extends StackedContext<
-	any,
-	"value",
-	CustoProviderRawValue<any, infer Obj>,
-	any
->
-	? Obj
-	: never;
-
-export type UnwrapDeepOptionalValue<T extends any> = T extends {
-	PartialMergingProvider: (arg: { value: infer R }) => any;
+export type UnwrapContainerValue<T> = T extends {
+  useValue(): CustoProviderRawValue<infer Obj, any>;
 }
-	? R
-	: never;
-
-const wrapInMeta = <Data, TransformedData>(
-	getValueHook: (
-		currentVal: Data,
-		prevVal: TransformedData,
-		mergedMeta: Omit<CustoProviderRawValue<any>, "value">
-	) => TransformedData,
-	getCurrentMetaHook: (
-		customizations: Data,
-		prevMeta: any
-	) => Omit<CustoProviderRawValue<any>, "value">
-): ((
-	currentVal: Data,
-	prevVal: CustoProviderRawValue<TransformedData>
-) => CustoProviderRawValue<TransformedData>) => {
-	return (
-		currentVal: Data,
-		prevValWithMeta: CustoProviderRawValue<TransformedData>
-	) => {
-		const currentMeta = getCurrentMetaHook(
-			currentVal,
-			prevValWithMeta.mergeFlags
-		);
-
-		const mergeFlags = useMemo((): custoMergeFlags | undefined => {
-			return new Set([
-				...(currentMeta.mergeFlags || []),
-				...(prevValWithMeta.mergeFlags || []),
-			]);
-		}, [currentMeta, prevValWithMeta.mergeFlags]);
-
-		const mergedMeta = useMemo(
-			(): Omit<CustoProviderRawValue<any>, "value"> => ({
-				mergeFlags,
-			}),
-			[mergeFlags]
-		);
-
-		const value = getValueHook(
-			currentVal,
-			prevValWithMeta.value,
-			mergedMeta
-		);
-		return useMemo(
-			(): CustoProviderRawValue<TransformedData> => ({
-				value,
-				...mergedMeta,
-			}),
-			[mergedMeta, value]
-		);
-	};
-};
+  ? Obj
+  : never;
+export type UnwrapContainerValueHack<T> = T extends {
+  useValue(): CustoProviderRawValue<any, infer Obj>;
+}
+  ? Obj
+  : never;
